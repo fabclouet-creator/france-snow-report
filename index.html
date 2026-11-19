@@ -68,6 +68,18 @@
       .stat {
         flex: 1; background: #f2f7ff; border-radius: 9px; padding: 7px 9px; font-size: 12px; color: var(--muted);
       }
+      .stat b.warn { color: #c0392b; }
+      .snowline { font-size: 12px; color: var(--muted); margin: 5px 0 0; }
+      .snowline b { color: var(--snow-deep); font-weight: 600; }
+      .chart-block { margin: 10px 0 0; }
+      .chart-title { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+      .chart { display: flex; gap: 6px; }
+      .cb {
+        flex: 1; height: 56px; border-radius: 6px; background: rgba(125, 185, 234, .16);
+        display: flex; flex-direction: column; justify-content: space-between; text-align: center; overflow: hidden;
+      }
+      .cb em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--snow-deep); padding-top: 3px; }
+      .cb span { font-size: 10px; opacity: .7; padding-bottom: 3px; }
       .stat b { display: block; font-size: 15px; color: var(--ink); margin-top: 1px; }
       .temp { position: absolute; top: 12px; left: 14px; }
       .footer { max-width: 1100px; margin: 22px auto 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
@@ -334,6 +346,11 @@
             camNoneShort: "Pas de webcam intégrée : le bouton ouvre une recherche web",
             camWait: "Vérification des webcams…",
             favLegend: "Favoris",
+            chartTitle: "Neige par jour (cm)",
+            snowline: "Limite pluie/neige",
+            snowAll: "neige jusqu'au village 🎿",
+            rainAll: "pluie jusqu'au sommet 🌧️",
+            wind: "Vent sommet",
             zoomIn: "Zoomer",
             zoomOut: "Dézoomer",
             zoomReset: "Vue initiale",
@@ -341,7 +358,7 @@
             demoNote: "⚠️ Données en direct indisponibles : valeurs de démonstration affichées. Si le fichier a été ouvert depuis le disque (l'adresse commence par file://), votre navigateur bloque probablement les requêtes météo. Hébergez la page en ligne (GitHub Pages, Netlify…) ou servez-la en local : elle fonctionnera alors partout, sans rien installer d'autre.",
             errNote: "⚠️ Impossible de récupérer les données de certaines stations. Cliquez sur « Actualiser » pour réessayer.",
             dataPartial: "certaines stations indisponibles",
-            cachedData: "dernier relevé enregistré ce jour",
+            cachedData: "données enregistrées dans le navigateur",
             slowNote: "⏳ Le chargement des données est anormalement long : votre réseau ou votre navigateur bloque probablement l'accès à open-meteo.com. Testez la page sur votre téléphone en 4G/5G pour vérifier, ou essayez après avoir désactivé vos extensions de navigateur.",
             footer: 'Données neige : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (modèles météo, CC BY 4.0). La neige est estimée à trois altitudes par station (village / mi-pente / sommet). Les valeurs sont des estimations indicatives : vérifiez toujours le bulletin officiel de la station avant de partir.',
             statUnit: "stations",
@@ -382,6 +399,11 @@
             camNoneShort: "No embedded webcam: the button opens a web search",
             camWait: "Checking webcams…",
             favLegend: "Favorites",
+            chartTitle: "Daily snowfall (cm)",
+            snowline: "Rain/snow limit",
+            snowAll: "snow down to the village 🎿",
+            rainAll: "rain up to the summit 🌧️",
+            wind: "Summit wind",
             zoomIn: "Zoom in",
             zoomOut: "Zoom out",
             zoomReset: "Reset view",
@@ -389,7 +411,7 @@
             demoNote: "⚠️ Live snow data could not be loaded, so demo values are shown. If you opened this file directly from disk (the address starts with file://), your browser is probably blocking weather requests. Host the page online (GitHub Pages, Netlify…) or serve it locally: it will then work everywhere, with nothing else to install.",
             errNote: "⚠️ Could not fetch data for some resorts. Click Refresh to retry.",
             dataPartial: "some resorts unavailable",
-            cachedData: "last saved reading shown",
+            cachedData: "data saved in your browser",
             slowNote: "⏳ Loading is taking unusually long: your network or browser is probably blocking access to open-meteo.com. Try the page on your phone using 4G/5G to check, or retry after disabling your browser extensions.",
             footer: 'Snow data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (weather models, CC BY 4.0). Snow is estimated at three altitudes per resort (village / mid-slope / summit). Values are indicative estimates: always check the resort official snow report before you go.',
             statUnit: "resorts",
@@ -426,11 +448,15 @@
           for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) % 100000; }
           var d0 = Math.round((h % 95) + ((r.top > 2400) ? 20 : 0));
           var t0 = -1 - (h % 8);
+          var c0 = h % 7, c1 = (h >> 1) % 6, c2 = (h >> 3) % 10, c3 = (h >> 5) % 4;
           return {
             depth: d0,
-            fresh: h % 7,
-            forecast: (h >> 3) % 24,
+            fresh: c0,
+            forecast: c1 + c2 + c3,
             temp: t0,
+            weather: [0, 1, 2, 3, 61, 71][h % 6],
+            wTop: Math.round(12 + (h % 42)),
+            chart: [c0, c1, c2, c3],
             dTop: d0,
             dMid: Math.round(d0 * 0.7),
             dBase: Math.round(d0 * 0.45),
@@ -688,10 +714,13 @@
           if (d.current && typeof d.current.temperature_2m === "number") {
             m.temp = Math.round(d.current.temperature_2m);
           }
+          if (d.current && typeof d.current.weather_code === "number") { m.wc = d.current.weather_code; }
+          if (d.current && typeof d.current.wind_speed_10m === "number") { m.wind = Math.round(d.current.wind_speed_10m); }
           var daily = d.daily && d.daily.snowfall_sum;
           if (daily && daily.length >= 4) {
             m.fresh = Math.round((daily[0] + 0) * 10) / 10;   /* last full day */
             m.forecast = Math.round(((daily[1] || 0) + (daily[2] || 0) + (daily[3] || 0)) * 10) / 10;
+            m.dailyVals = [daily[0], (daily[1] || 0), (daily[2] || 0), (daily[3] || 0)];
           }
           var hourly = d.hourly && d.hourly.snow_depth;
           if (hourly) {
@@ -728,7 +757,7 @@
           var url = "https://api.open-meteo.com/v1/forecast?latitude=" + la.join(",") +
             "&longitude=" + lo.join(",") +
             "&elevation=" + el.join(",") +
-            "&current=temperature_2m" +
+            "&current=temperature_2m,weather_code,wind_speed_10m" +
             "&hourly=snow_depth" +
             "&daily=snowfall_sum" +
             "&past_days=1&forecast_days=3&timezone=Europe%2FParis";
@@ -749,11 +778,18 @@
               var temp = null;
               if (mMid && typeof mMid.temp === "number") { temp = mMid.temp; }
               else if (mTop && typeof mTop.temp === "number") { temp = mTop.temp; }
+              var weather = null;
+              if (mMid && typeof mMid.wc === "number") { weather = mMid.wc; }
+              else if (mTop && typeof mTop.wc === "number") { weather = mTop.wc; }
+              else if (mBase && typeof mBase.wc === "number") { weather = mBase.wc; }
               DATA[r.n] = {
                 depth: mTop ? mTop.depth : null,
                 fresh: head ? head.fresh : 0,
                 forecast: head ? head.forecast : 0,
                 temp: temp,
+                weather: weather,
+                wTop: (mTop && typeof mTop.wind === "number") ? mTop.wind : null,
+                chart: (head && head.dailyVals) ? head.dailyVals : null,
                 dTop: mTop ? mTop.depth : null,
                 dMid: mMid ? mMid.depth : null,
                 dBase: mBase ? mBase.depth : null,
@@ -783,7 +819,7 @@
             var raw = localStorage.getItem("fsr-cache");
             if (!raw) { return false; }
             var obj = JSON.parse(raw);
-            if (!obj || !obj.d || !obj.t || (Date.now() - obj.t) > 86400000) { return false; }
+            if (!obj || !obj.d || !obj.t || (Date.now() - obj.t) > 604800000) { return false; }
             DATA = obj.d;
             lastUpdate = new Date(obj.t);
             return true;
@@ -810,7 +846,7 @@
           renderMeta();
           var slowEl = document.getElementById("slow-note");
           if (slowEl) { slowEl.classList.remove("show"); }
-          var chunks = chunk(RESORTS, 20);
+          var chunks = chunk(RESORTS, 39);
           var slowTimer = setTimeout(function () {
             if (mode === "loading" && slowEl) {
               slowEl.textContent = t("slowNote") + (lastErr ? " (" + lastErr + ")" : "");
@@ -867,6 +903,27 @@
           var out = (typeof v === "number") ? v + " cm" : "…";
           if (typeof tp === "number") { out += " · " + (tp > 0 ? "+" : "") + tp + "°C"; }
           return out;
+        }
+        function weatherIcon(code) {
+          if (code === 0) { return "☀️"; }
+          if (code === 1 || code === 2) { return "🌤️"; }
+          if (code === 3) { return "☁️"; }
+          if (code >= 45 && code <= 48) { return "🌫️"; }
+          if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) { return "🌧️"; }
+          if ((code >= 71 && code <= 77) || code === 85 || code === 86) { return "🌨️"; }
+          if (code >= 95) { return "⛈️"; }
+          return "";
+        }
+        /* rain/snow limit: altitude where the 0°C line sits (interpolated between the 3 levels) */
+        function snowlineAlt(r, m) {
+          if (!m || typeof m.tBase !== "number" || typeof m.tMid !== "number" ||
+              typeof m.tTop !== "number") { return null; }
+          if (m.tBase <= 0) { return "snow"; }
+          if (m.tTop > 0) { return "rain"; }
+          var a1 = r.ba, t1 = m.tBase, a2 = midAlt(r), t2 = m.tMid, a3 = r.top, t3 = m.tTop;
+          if (t2 <= 0) { return Math.round(a1 + (a2 - a1) * (t1 / (t1 - t2))); }
+          if (t3 <= 0) { return Math.round(a2 + (a3 - a2) * (t2 / (t2 - t3))); }
+          return "rain";
         }
 
         /* ---------- render ---------- */
@@ -1090,13 +1147,46 @@
           var snowClass = (m && m.fresh && m.fresh > 0) ? " ❄️" : "";
           var popup = (m && typeof m.temp === "number") ? " · " + (m.temp > 0 ? "+" : "") + m.temp + "°C" : "";
           var depthTxt = (typeof depthVal === "number") ? depthVal + " cm" : t("na");
+          var icon = (m && typeof m.weather === "number") ? weatherIcon(m.weather) : "";
+          var sl = snowlineAlt(r, m);
+          var slTxt = (sl === "snow") ? t("snowAll") : (sl === "rain") ? t("rainAll") :
+            (typeof sl === "number" ? (sl + " m") : null);
+          var chartHtml = "";
+          if (m && m.chart && m.chart.length === 4) {
+            var vals = m.chart.map(function (x) {
+              return (typeof x === "number") ? Math.round(x * 10) / 10 : 0;
+            });
+            var scale = 0;
+            for (var ci = 0; ci < 4; ci++) { if (vals[ci] > scale) { scale = vals[ci]; } }
+            scale = Math.max(4, scale);
+            chartHtml = '<div class="chart-block"><div class="chart-title">' +
+              escapeHtml(t("chartTitle")) + '</div><div class="chart">';
+            for (var ci = 0; ci < 4; ci++) {
+              var vpct = Math.min(100, Math.round(vals[ci] / scale * 100));
+              var vlbl = (vals[ci] % 1 === 0) ? String(Math.round(vals[ci])) : String(vals[ci]);
+              var dayLbl = "";
+              try {
+                dayLbl = new Date(Date.now() + (ci - 1) * 86400000)
+                  .toLocaleDateString(LANG === "fr" ? "fr-FR" : "en-GB", { weekday: "short" })
+                  .replace(".", "");
+              } catch (e) { dayLbl = ["hier", "auj.", "+1", "+2"][ci]; }
+              chartHtml += '<div class="cb" style="background-image:linear-gradient(to top, rgba(125,185,234,.8) ' +
+                vpct + "%, rgba(125,185,234,.16) " + vpct + '%)" title="' + escapeHtml(dayLbl) + " : " + vlbl + ' cm">' +
+                "<em>" + vlbl + "</em><span>" + escapeHtml(dayLbl) + "</span></div>";
+            }
+            chartHtml += "</div></div>";
+          }
+          var windHtml = (m && typeof m.wTop === "number")
+            ? "<b" + ((m.wTop >= 65) ? ' class="warn"' : "") + ">" + m.wTop + " km/h</b>"
+            : "<b>…</b>";
           return (
             '<div class="card" data-resort="' + escapeHtml(r.n) + '">' +
               '<button class="star ' + (favs[r.n] ? "on" : "") + '" data-fav="' + escapeHtml(r.n) + '" title="' + t("fav") + '">' + (favs[r.n] ? "★" : "☆") + "</button>" +
-              "<h2>" + escapeHtml(r.n) + "</h2>" +
+              "<h2>" + escapeHtml(r.n) + (icon ? " " + icon : "") + "</h2>" +
               '<div class="region">' + escapeHtml(REGIONS[r.r][LANG]) + " · " + t("top") + " " + r.top + " m</div>" +
               '<div class="depth"><strong>' + escapeHtml(depthTxt) + '</strong><span>' + escapeHtml(t("depth")) + popup + snowClass + "</span></div>" +
               '<div class="gauge"><div style="width:' + pct + '%"></div></div>' +
+              (slTxt ? '<div class="snowline">🌧️/❄️ ' + escapeHtml(t("snowline")) + " <b>" + escapeHtml(slTxt) + "</b></div>" : "") +
               '<div class="alts">' +
                 '<div class="alt-row"><span>' + escapeHtml(t("altVillage")) + " · " + r.ba + " m</span><b>" + fmtAlt(m && m.dBase, m && m.tBase) + "</b></div>" +
                 '<div class="alt-row"><span>' + escapeHtml(t("altMid")) + " · " + midAlt(r) + " m</span><b>" + fmtAlt(m && m.dMid, m && m.tMid) + "</b></div>" +
@@ -1105,11 +1195,14 @@
               '<div class="stats">' +
                 '<div class="stat">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
                 '<div class="stat">' + escapeHtml(t("forecast")) + "<b>" + (m ? fmt(m.forecast, " cm", true) : "…") + "</b></div>" +
+                '<div class="stat">' + escapeHtml(t("wind")) + windHtml + "</div>" +
               "</div>" +
+              chartHtml +
               '<button class="cam-btn" type="button" data-cams="' + escapeHtml(r.n) + '">📷 ' + escapeHtml(t("cams")) + camStateHtml(r.n) + "</button>" +
             "</div>"
           );
         }
+
 
         function render() {
           applyStaticText();
@@ -1287,6 +1380,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="xOQAnfE8PEUXPnDC2D01/g==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="c0FnFXDi7dzNAl4IOLusHg==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
