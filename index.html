@@ -92,6 +92,27 @@
       .pbadge { display: inline-block; margin: 6px 0 2px; padding: 2px 9px; border-radius: 999px; background: #e8f4ff; border: 1px solid #7db9ea; color: #0b4c75; font-size: 11px; font-weight: 700; }
       .stat b { display: block; font-size: 15px; color: var(--ink); margin-top: 1px; }
       .temp { position: absolute; top: 12px; left: 14px; }
+      /* v13: near-me / gallery / compare / detail */
+      .dist { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #eaf3fe; border: 1px solid #cfe3f6; color: #1b4f8f; font-size: 10.5px; font-weight: 600; }
+      .btn-row { display: flex; gap: 6px; margin-top: 10px; padding: 0 16px; }
+      .btn-row .cam-btn { width: auto; flex: 1; margin-top: 0; }
+      .cam-btn.sel { outline: 2px solid #f5b301; outline-offset: 1px; }
+      #cmp-tray { display: none; position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; box-shadow: 0 4px 18px rgba(15,30,60,.18); z-index: 50; max-width: 92vw; flex-wrap: wrap; }
+      #cmp-tray.show { display: flex; }
+      #cmp-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+      .cmp-chip { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: #eaf3fe; border: 1px solid #cfe3f6; color: #1b4f8f; cursor: pointer; }
+      #cmp-open { white-space: nowrap; }
+      .cmp-table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+      .cmp-table th, .cmp-table td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; }
+      .cmp-table th { background: #f2f7ff; }
+      .glm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; text-align: left; }
+      .glm-cell h3 { font-size: 13.5px; margin: 0 0 8px; }
+      .glm-cell .cam-img { margin: 0 0 8px; }
+      .mt-svg { width: 100%; max-width: 430px; display: block; margin: 0 auto 12px; }
+      .mt-lbl { font: 600 10.5px system-ui, sans-serif; fill: #1b4f8f; }
+      .dt-rank { text-align: center; font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+      .dt-body .card { width: 100%; max-width: 350px; margin: 0 auto; }
+      button:disabled { opacity: .5; cursor: default; }
       .footer { max-width: 1100px; margin: 22px auto 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
       .footer a { color: var(--snow); }
       .empty { text-align: center; color: var(--muted); padding: 30px; }
@@ -162,6 +183,11 @@
         .dot { stroke: #101c30; }
         .modal { background: #16233a; color: var(--ink); }
         .modal-actions button, .modal-actions a { background: #1d2c47; color: #c3dbf6; border-color: var(--line); }
+        .dist { background: rgba(122, 184, 238, .12); border-color: #3d5f8a; color: #c3dbf6; }
+        .cmp-chip { background: rgba(122, 184, 238, .12); border-color: #3d5f8a; color: #c3dbf6; }
+        #cmp-tray { box-shadow: 0 4px 18px rgba(0, 0, 0, .5); }
+        .cmp-table th { background: #1d2c47; }
+        .mt-lbl { fill: #c3dbf6; }
       }
       @media (max-width: 560px) { h1 { font-size: 21px; } .card .stats { flex-direction: column; } }
     </style>
@@ -185,6 +211,9 @@
           <button id="view-cards"></button>
           <button id="view-map"></button>
           <button id="fav-toggle"></button>
+          <button id="nearme"></button>
+          <button id="cmp-toggle"></button>
+          <button id="cams-all"></button>
           <button id="refresh"></button>
           <button id="lang"></button>
         </div>
@@ -231,6 +260,31 @@
             <a id="cam-more" href="#" target="_blank" rel="noopener"></a>
           </div>
         </div>
+      </div>
+      <div class="modal-back" id="gallery-back">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="close-x" id="gallery-close" type="button">✕</button>
+          <h2 id="gallery-title"></h2>
+          <div class="glm-grid" id="gallery-body"></div>
+        </div>
+      </div>
+      <div class="modal-back" id="detail-back">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="close-x" id="detail-close" type="button">✕</button>
+          <h2 id="detail-title"></h2>
+          <div class="dt-body" id="dt-body"></div>
+        </div>
+      </div>
+      <div class="modal-back" id="cmp-back">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="close-x" id="cmp-close" type="button">✕</button>
+          <h2 id="cmp-title"></h2>
+          <div id="cmp-body"></div>
+        </div>
+      </div>
+      <div id="cmp-tray">
+        <div id="cmp-chips"></div>
+        <button id="cmp-open" type="button"></button>
       </div>
       <p class="footer" id="t-footer"></p>
     </main>
@@ -388,6 +442,17 @@
             wind: "Vent sommet",
             topTitle: "🏆 Neige fraîche 24 h",
             powder: "Jour poudre",
+            nearme: "Près de moi",
+            nearmeTip: "Trier les stations par distance de votre position",
+            nearmeErr: "Position refusée ou indisponible",
+            allcams: "Toutes les webcams",
+            cmpToggle: "Comparer",
+            cmpBtn: "Comparer",
+            cmpMax: "Maximum 3 stations",
+            cmpOpen: "Voir la comparaison ⚖️",
+            cmpTitle: "⚖️ Comparaison des stations",
+            detail: "Détails",
+            rankDepth: "N°{x} sur {y} pour la neige au sommet",
             zoomIn: "Zoomer",
             zoomOut: "Dézoomer",
             zoomReset: "Vue initiale",
@@ -445,6 +510,17 @@
             wind: "Summit wind",
             topTitle: "🏆 Fresh snow 24 h",
             powder: "Powder day",
+            nearme: "Near me",
+            nearmeTip: "Sort resorts by distance from your location",
+            nearmeErr: "Location denied or unavailable",
+            allcams: "All webcams",
+            cmpToggle: "Compare",
+            cmpBtn: "Compare",
+            cmpMax: "Maximum 3 resorts",
+            cmpOpen: "View comparison ⚖️",
+            cmpTitle: "⚖️ Resort comparison",
+            detail: "Details",
+            rankDepth: "Ranked #{x} of {y} by summit snow",
             zoomIn: "Zoom in",
             zoomOut: "Zoom out",
             zoomReset: "Reset view",
@@ -481,6 +557,10 @@
         var mode = "loading"; /* loading | live | partial | demo */
         var lastUpdate = null;
         var lastErr = "";
+        var userPos = null;   /* from Near me button */
+        var sortNear = false;
+        var cmpMode = false;  /* compare selection mode */
+        var cmp = {};         /* resort name -> true */
 
         /* ---------- deterministic demo data ---------- */
         function demoFor(r) {
@@ -1028,6 +1108,174 @@
           if (back) { back.classList.remove("open"); }
         }
 
+        /* ---------- v13: distance (Near me) ---------- */
+        function distanceKm(la1, lo1, la2, lo2) {
+          var rad = Math.PI / 180;
+          var x = (lo2 - lo1) * rad * Math.cos(((la1 + la2) / 2) * rad);
+          var y = (la2 - la1) * rad;
+          return Math.sqrt(x * x + y * y) * 6371;
+        }
+        function resortByName(n) {
+          for (var i = 0; i < RESORTS.length; i++) { if (RESORTS[i].n === n) { return RESORTS[i]; } }
+          return null;
+        }
+
+        /* ---------- v13: webcam gallery ---------- */
+        function openGallery() {
+          var body = document.getElementById("gallery-body");
+          var back = document.getElementById("gallery-back");
+          if (!body || !back) { return; }
+          var h = "";
+          Object.keys(WC).forEach(function (n) {
+            var urls = WC[n] || [];
+            if (!urls.length) { return; }
+            h += '<div class="glm-cell"><h3>' + escapeHtml(n) + "</h3>";
+            urls.forEach(function (u) {
+              h += '<img class="cam-img" src="' + escapeHtml(u) + '" alt="' + escapeHtml(n) + '" loading="lazy" />';
+            });
+            h += "</div>";
+          });
+          body.innerHTML = h;
+          back.classList.add("open");
+        }
+        function closeGallery() {
+          var back = document.getElementById("gallery-back");
+          if (back) { back.classList.remove("open"); }
+        }
+
+        /* ---------- v13: resort detail + mountain ---------- */
+        function mountainSvg(r, m) {
+          if (!m) { return ""; }
+          var top = r.top, ba = r.ba, mid = midAlt(r);
+          var yTop = 26, yBa = 164, peakX = 170, halfX = 145;
+          function yFor(alt) { return yBa - ((alt - ba) / Math.max(1, top - ba)) * (yBa - yTop); }
+          function xAt(y, side) { var d = halfX * ((y - yTop) / Math.max(1, yBa - yTop)); return peakX + (side > 0 ? d : -d); }
+          var yM = Math.round(yFor(mid));
+          var sl = snowlineAlt(r, m);
+          var capY = (typeof sl === "number") ? Math.max(yTop + 5, Math.round(yFor(sl))) : yTop + 14;
+          var dd = function (v) { return (typeof v === "number") ? v + " cm" : "…"; };
+          var tt = function (v) { return (typeof v === "number") ? ((v > 0 ? "+" : "") + v + "°C") : "…"; };
+          var h = '<svg class="mt-svg" viewBox="0 0 340 200" role="img" aria-label="' + escapeHtml(r.n) + '">';
+          h += '<polygon points="' + peakX + "," + yTop + " 25," + yBa + " 315," + yBa + '" fill="#6f93b5" stroke="#55708e" stroke-width="1" />';
+          h += '<polygon points="' + peakX + "," + yTop + " " + Math.round(xAt(capY, -1)) + "," + capY + " " + Math.round(xAt(capY, 1)) + "," + capY + '" fill="#fff" stroke="#d7e6f5" stroke-width="1" />';
+          function band(y, depth) {
+            var hh = (typeof depth === "number") ? Math.max(2, Math.min(20, Math.round(depth / 6))) : 2;
+            var ya = Math.min(yBa - 2, y + 3);
+            var xa = Math.round(xAt(ya, -1)) + 5, xb = Math.round(xAt(ya, 1)) - 5;
+            return '<rect x="' + xa + '" y="' + ya + '" width="' + Math.max(10, xb - xa) + '" height="' + hh + '" fill="#fff" stroke="#dbe8f5" stroke-width="0.6" rx="2" />';
+          }
+          h += band(yTop, m.dTop);
+          h += band(yM, m.dMid);
+          h += band(yBa, m.dBase);
+          function line(y, color) { return '<line x1="' + Math.round(xAt(y, -1)) + '" y1="' + y + '" x2="' + Math.round(xAt(y, 1)) + '" y2="' + y + '" stroke="' + color + '" stroke-width="1.2" stroke-dasharray="4 3" />'; }
+          h += line(yTop, "#eaf3fe");
+          h += line(yM, "#eaf3fe");
+          h += line(yBa, "#eaf3fe");
+          if (typeof sl === "number") {
+            var slY = Math.round(yFor(sl));
+            if (slY > yTop + 3 && slY < yBa - 1) { h += line(slY, "#f5a301"); }
+          }
+          h += '<text x="14" y="' + (yTop - 6) + '" class="mt-lbl">' + escapeHtml(t("altSummit") + " " + top + " m · " + dd(m.dTop) + " · " + tt(m.tTop)) + "</text>";
+          h += '<text x="14" y="' + (yM - 5) + '" class="mt-lbl">' + escapeHtml(t("altMid") + " " + mid + " m · " + dd(m.dMid) + " · " + tt(m.tMid)) + "</text>";
+          h += '<text x="14" y="' + (yBa - 5) + '" class="mt-lbl">' + escapeHtml(t("altVillage") + " " + ba + " m · " + dd(m.dBase) + " · " + tt(m.tBase)) + "</text>";
+          h += "</svg>";
+          return h;
+        }
+        function openDetail(name) {
+          var r = resortByName(name);
+          var body = document.getElementById("dt-body");
+          var back = document.getElementById("detail-back");
+          if (!r || !body || !back) { return; }
+          var m = metric(r);
+          var rank = 0, cnt = 0;
+          RESORTS.forEach(function (o) {
+            var om = metric(o);
+            if (om && typeof om.depth === "number") {
+              cnt++;
+              if (m && typeof m.depth === "number" && om.depth > m.depth) { rank++; }
+            }
+          });
+          setTxt("detail-title", r.n);
+          var rankTxt = (m && typeof m.depth === "number")
+            ? t("rankDepth").replace("{x}", String(rank + 1)).replace("{y}", String(cnt))
+            : "";
+          body.innerHTML = (rankTxt ? '<p class="dt-rank">' + escapeHtml(rankTxt) + "</p>" : "") +
+            mountainSvg(r, m) + cardHtml(r, m);
+          back.classList.add("open");
+        }
+        function closeDetail() {
+          var back = document.getElementById("detail-back");
+          if (back) { back.classList.remove("open"); }
+        }
+
+        /* ---------- v13: compare mode ---------- */
+        function toggleCompare(name) {
+          if (cmp[name]) { delete cmp[name]; }
+          else if (Object.keys(cmp).length < 3) { cmp[name] = true; }
+          render();
+        }
+        function renderCmpTray() {
+          var tray = document.getElementById("cmp-tray");
+          if (!tray) { return; }
+          var names = Object.keys(cmp);
+          var show = cmpMode && names.length > 0 && view === "cards";
+          tray.classList.toggle("show", show);
+          var nb = document.getElementById("nearme");
+          if (nb) { nb.classList.toggle("active", sortNear); }
+          if (!show) { return; }
+          var chips = document.getElementById("cmp-chips");
+          if (chips) {
+            var h = "";
+            names.forEach(function (n) {
+              h += '<button type="button" class="cmp-chip" data-crm="' + escapeHtml(n) + '">' + escapeHtml(n) + " ✕</button>";
+            });
+            chips.innerHTML = h;
+          }
+          var ob = document.getElementById("cmp-open");
+          if (ob) { ob.disabled = names.length < 2; }
+        }
+        function openCompare() {
+          var names = Object.keys(cmp);
+          var body = document.getElementById("cmp-body");
+          var back = document.getElementById("cmp-back");
+          if (!body || !back || names.length < 2) { return; }
+          function fmtv(v, u) { return (typeof v === "number") ? v + u : "…"; }
+          var rows = [
+            [t("top"), function (r) { return r.top + " m"; }],
+            [t("depth"), function (r, m) { return fmtv(m && m.depth, " cm"); }],
+            [t("fresh"), function (r, m) { return fmtv(m && m.fresh, " cm"); }],
+            [t("forecast"), function (r, m) { return fmtv(m && m.forecast, " cm"); }],
+            [t("altSummit"), function (r, m) { return fmtAlt(m && m.dTop, m && m.tTop); }],
+            [t("altMid"), function (r, m) { return fmtAlt(m && m.dMid, m && m.tMid); }],
+            [t("wind"), function (r, m) { return (m && typeof m.wTop === "number") ? m.wTop + " km/h" : "…"; }],
+            [t("snowline"), function (r, m) {
+              var sl = snowlineAlt(r, m);
+              return (sl === "snow") ? t("snowAll") : (sl === "rain") ? t("rainAll")
+                : ((typeof sl === "number") ? sl + " m" : "…");
+            }]
+          ];
+          var h = '<table class="cmp-table"><tr><th></th>';
+          names.forEach(function (n) { h += "<th>" + escapeHtml(n) + "</th>"; });
+          h += "</tr>";
+          rows.forEach(function (row) {
+            h += "<tr><th>" + escapeHtml(row[0]) + "</th>";
+            names.forEach(function (n) {
+              var r = resortByName(n);
+              var v = r ? row[1](r, metric(r)) : "…";
+              h += "<td>" + escapeHtml(String(v)) + "</td>";
+            });
+            h += "</tr>";
+          });
+          h += "</table>";
+          body.innerHTML = h;
+          setTxt("cmp-title", t("cmpTitle"));
+          back.classList.add("open");
+        }
+        function closeCompare() {
+          var back = document.getElementById("cmp-back");
+          if (back) { back.classList.remove("open"); }
+        }
+
         /* ---------- webcam availability badge ---------- */
         var camOk = {}      /* resort -> true|false once probed */
         var camPending = {};
@@ -1101,6 +1349,7 @@
           if (g) { g.classList.toggle("view-hidden", v !== "cards"); }
           var tE = document.getElementById("top10");
           if (tE) { tE.classList.toggle("view-hidden", v !== "cards"); }
+          renderCmpTray();
           if (mv) { mv.classList.toggle("view-hidden", v !== "map"); }
           var b1 = document.getElementById("view-cards");
           var b2 = document.getElementById("view-map");
@@ -1161,6 +1410,13 @@
           setTxt("map-hint", t("mapHint"));
           setTxt("cam-refresh", t("camRefresh"));
           setTxt("cam-more", t("camMore"));
+          setTxt("nearme", "📍 " + t("nearme"));
+          setTitle("nearme", t("nearmeTip"));
+          setTxt("cmp-toggle", "⚖️ " + t("cmpToggle"));
+          setTitle("cmp-toggle", t("cmpMax"));
+          setTxt("cams-all", "🖼 " + t("allcams"));
+          setTxt("gallery-title", "🖼 " + t("allcams"));
+          setTxt("cmp-open", t("cmpOpen"));
           setTxt("t-favlegend", t("favLegend"));
           setTitle("zoom-in", t("zoomIn"));
           setTitle("zoom-out", t("zoomOut"));
@@ -1199,6 +1455,9 @@
           var slTxt = (sl === "snow") ? t("snowAll") : (sl === "rain") ? t("rainAll") :
             (typeof sl === "number" ? (sl + " m") : null);
           var powder = (m && typeof m.forecast === "number" && m.forecast >= 20);
+          var distHtml = userPos
+            ? ' <span class="dist">📍 ' + Math.round(distanceKm(userPos.la, userPos.lo, r.la, r.lo)) + " km</span>"
+            : "";
           var chartHtml = "";
           if (m && m.chart && m.chart.length >= 4) {
             var vals = m.chart.map(function (x) {
@@ -1237,7 +1496,7 @@
               '<button class="star ' + (favs[r.n] ? "on" : "") + '" data-fav="' + escapeHtml(r.n) + '" title="' + t("fav") + '">' + (favs[r.n] ? "★" : "☆") + "</button>" +
               "<h2>" + escapeHtml(r.n) + (icon ? " " + icon : "") + "</h2>" +
               (powder ? '<span class="pbadge">❄️ ' + escapeHtml(t("powder")) + "</span>" : "") +
-              '<div class="region">' + escapeHtml(REGIONS[r.r][LANG]) + " · " + t("top") + " " + r.top + " m</div>" +
+              '<div class="region">' + escapeHtml(REGIONS[r.r][LANG]) + " · " + t("top") + " " + r.top + " m" + distHtml + "</div>" +
               '<div class="depth"><strong>' + escapeHtml(depthTxt) + '</strong><span>' + escapeHtml(t("depth")) + popup + snowClass + "</span></div>" +
               '<div class="gauge"><div style="width:' + pct + '%"></div></div>' +
               (slTxt ? '<div class="snowline">🌧️/❄️ ' + escapeHtml(t("snowline")) + " <b>" + escapeHtml(slTxt) + "</b></div>" : "") +
@@ -1253,6 +1512,10 @@
               "</div>" +
               chartHtml +
               '<button class="cam-btn" type="button" data-cams="' + escapeHtml(r.n) + '">📷 ' + escapeHtml(t("cams")) + camStateHtml(r.n) + "</button>" +
+              '<div class="btn-row">' +
+                '<button class="cam-btn" type="button" data-detail="' + escapeHtml(r.n) + '">📊 ' + escapeHtml(t("detail")) + "</button>" +
+                (cmpMode ? '<button class="cam-btn' + (cmp[r.n] ? " sel" : "") + '" type="button" data-cmp="' + escapeHtml(r.n) + '">⚖️ ' + escapeHtml(t("cmpBtn")) + "</button>" : "") +
+              "</div>" +
             "</div>"
           );
         }
@@ -1296,6 +1559,11 @@
             if (sortKey === "name") { return val(a, "name").localeCompare(val(b, "name")); }
             return val(b, sortKey) - val(a, sortKey);
           });
+          if (sortNear && userPos) {
+            list.sort(function (a, b) {
+              return distanceKm(userPos.la, userPos.lo, a.la, a.lo) - distanceKm(userPos.la, userPos.lo, b.la, b.lo);
+            });
+          }
 
           var tEl = document.getElementById("top10");
           if (tEl) {
@@ -1333,6 +1601,7 @@
           });
           grid.innerHTML = html;
           checkCams();
+          renderCmpTray();
         }
 
         /* ---------- events ---------- */
@@ -1342,7 +1611,7 @@
           searchTimer = setTimeout(render, 120);
         });
         elRegion.addEventListener("change", render);
-        elSort.addEventListener("change", render);
+        elSort.addEventListener("change", function () { sortNear = false; render(); });
         elFav.addEventListener("click", function () {
           favOnly = !favOnly;
           render();
@@ -1438,6 +1707,10 @@
         grid.addEventListener("click", function (ev) {
           var camBtn = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-cams") : null;
           if (camBtn) { openCams(camBtn, false); return; }
+          var detBtn = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-detail") : null;
+          if (detBtn) { openDetail(detBtn); return; }
+          var cmpSel = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-cmp") : null;
+          if (cmpSel) { toggleCompare(cmpSel); return; }
           var btn = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-fav") : null;
           if (!btn) { return; }
           if (favs[btn]) { delete favs[btn]; } else { favs[btn] = true; }
@@ -1454,8 +1727,45 @@
             if (ev.target === modalBack) { closeCams(); }
           });
         }
+        onId("gallery-close", "click", closeGallery);
+        onId("detail-close", "click", closeDetail);
+        onId("cmp-close", "click", closeCompare);
+        onId("cmp-open", "click", openCompare);
+        onId("cams-all", "click", openGallery);
+        onId("cmp-toggle", "click", function () {
+          cmpMode = !cmpMode;
+          if (!cmpMode) { cmp = {}; }
+          render();
+        });
+        onId("cmp-chips", "click", function (ev) {
+          var n = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-crm") : null;
+          if (n && cmp[n]) { delete cmp[n]; render(); }
+        });
+        onId("nearme", "click", function () {
+          var btn = document.getElementById("nearme");
+          if (sortNear) { sortNear = false; render(); return; }
+          if (typeof navigator === "undefined" || !navigator.geolocation || !navigator.geolocation.getCurrentPosition) {
+            if (btn) { btn.title = t("nearmeErr"); }
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(function (pos) {
+            userPos = { la: pos && pos.coords ? pos.coords.latitude : 0, lo: pos && pos.coords ? pos.coords.longitude : 0 };
+            sortNear = true;
+            render();
+          }, function () {
+            if (btn) { btn.title = t("nearmeErr"); }
+          });
+        });
+        ["gallery-back", "detail-back", "cmp-back"].forEach(function (idz) {
+          var elz = document.getElementById(idz);
+          if (elz) {
+            elz.addEventListener("click", function (ev) {
+              if (ev.target === elz) { closeGallery(); closeDetail(); closeCompare(); }
+            });
+          }
+        });
         document.addEventListener("keydown", function (ev) {
-          if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); }
+          if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); closeGallery(); closeDetail(); closeCompare(); }
         });
         document.addEventListener("visibilitychange", function () {
           if (!document.hidden && mode !== "live") { loadLive(); }
@@ -1467,6 +1777,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="hF4Z3ur2To9d0yslZ7Pmzw==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="UsHWHlw7FbfcDpuCpYNE4A==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
