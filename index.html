@@ -326,8 +326,10 @@
             meta: "chargement…",
             updated: "Mis à jour",
             depth: "neige au sommet",
-            fresh: "neige fraîche 24 h",
-            forecast: "neige prévue 3 j",
+            fresh: "Fraîche 24 h (mi-pente)",
+            freshTip: "Neige fraîche des dernières 24 h, mesurée à mi-pente",
+            forecast: "Prévue 3 j (mi-pente)",
+            forecastTip: "Neige totale prévue sur 3 jours, à mi-pente",
             top: "sommet",
             altVillage: "Village",
             altMid: "Mi-pente",
@@ -379,8 +381,10 @@
             meta: "loading…",
             updated: "Updated",
             depth: "snow at summit",
-            fresh: "fresh snow 24 h",
-            forecast: "snow next 3 days",
+            fresh: "Fresh 24 h (mid-slope)",
+            freshTip: "Fresh snow over the last 24 h, measured at mid-slope",
+            forecast: "Next 3 days (mid-slope)",
+            forecastTip: "Total snowfall expected over the next 3 days, at mid-slope",
             top: "summit",
             altVillage: "Village",
             altMid: "Mid-slope",
@@ -1193,8 +1197,8 @@
                 '<div class="alt-row"><span>' + escapeHtml(t("altSummit")) + " · " + r.top + " m</span><b>" + fmtAlt(m && m.dTop, m && m.tTop) + "</b></div>" +
               "</div>" +
               '<div class="stats">' +
-                '<div class="stat">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
-                '<div class="stat">' + escapeHtml(t("forecast")) + "<b>" + (m ? fmt(m.forecast, " cm", true) : "…") + "</b></div>" +
+                '<div class="stat" title="' + escapeHtml(t("freshTip")) + '">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
+                '<div class="stat" title="' + escapeHtml(t("forecastTip")) + '">' + escapeHtml(t("forecast")) + "<b>" + (m ? fmt(m.forecast, " cm", true) : "…") + "</b></div>" +
                 '<div class="stat">' + escapeHtml(t("wind")) + windHtml + "</div>" +
               "</div>" +
               chartHtml +
@@ -1380,6 +1384,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="c0FnFXDi7dzNAl4IOLusHg==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="HxAtlMP+N71CQ9ewOKAqiA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
