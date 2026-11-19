@@ -70,6 +70,18 @@
       .footer { max-width: 1100px; margin: 22px auto 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
       .footer a { color: var(--snow); }
       .empty { text-align: center; color: var(--muted); padding: 30px; }
+      .view-hidden { display: none !important; }
+      #map { width: 100%; max-width: 760px; display: block; margin: 0 auto; background: #e7f0fb; border: 1px solid var(--line); border-radius: 14px; }
+      .map-hint { font-size: 13px; color: var(--muted); margin: 4px 2px 8px; }
+      .france { fill: #f5f8fd; stroke: #b9c9de; stroke-width: 1.5; }
+      .dot { stroke: #fff; stroke-width: 1; cursor: pointer; }
+      .dot:hover { stroke: var(--accent); stroke-width: 2; }
+      .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 10px 2px 16px; }
+      .legend span { display: inline-flex; align-items: center; gap: 5px; }
+      .sw { display: inline-block; width: 11px; height: 11px; border-radius: 50%; }
+      .card.flash { outline: 3px solid #1d5aa8; outline-offset: 2px; }
+      .cam { display: inline-block; margin-top: 9px; font-size: 12.5px; color: var(--snow); text-decoration: none; }
+      .cam:hover { text-decoration: underline; }
       @media (max-width: 560px) { h1 { font-size: 21px; } .card .stats { flex-direction: column; } }
     </style>
   </head>
@@ -89,6 +101,8 @@
             <option value="forecast" id="o-forecast"></option>
             <option value="name" id="o-name"></option>
           </select>
+          <button id="view-cards"></button>
+          <button id="view-map"></button>
           <button id="fav-toggle"></button>
           <button id="refresh"></button>
           <button id="lang"></button>
@@ -103,6 +117,20 @@
       <div class="notice error" id="err-note"></div>
       <div class="notice demo" id="slow-note"></div>
       <div class="grid" id="grid"></div>
+      <div id="map-view" class="view-hidden">
+        <p class="map-hint" id="map-hint"></p>
+        <svg id="map" viewBox="0 0 700 660" role="img" aria-label="Carte des stations / Map of resorts">
+          <g id="map-outline"></g>
+          <g id="map-dots"></g>
+        </svg>
+        <div class="legend">
+          <span><i class="sw" style="background:#d3dce8"></i>0</span>
+          <span><i class="sw" style="background:#8fc1ea"></i>1-30</span>
+          <span><i class="sw" style="background:#4f9adb"></i>31-60</span>
+          <span><i class="sw" style="background:#2f7fd1"></i>61-100</span>
+          <span><i class="sw" style="background:#1b4f8f"></i>100+ cm</span>
+        </div>
+      </div>
       <p class="footer" id="t-footer"></p>
     </main>
 
@@ -234,6 +262,10 @@
             forecast: "neige prévue 3 j",
             top: "sommet",
             favOnly: "Favoris uniquement",
+            cards: "Cartes",
+            map: "Carte",
+            cams: "Webcams",
+            mapHint: "Cliquez sur une station pour voir sa fiche. La couleur du point indique la neige au sol.",
             empty: "Aucune station ne correspond.",
             demoNote: "⚠️ Données en direct indisponibles : valeurs de démonstration affichées. Si le fichier a été ouvert depuis le disque (l'adresse commence par file://), votre navigateur bloque probablement les requêtes météo. Hébergez la page en ligne (GitHub Pages, Netlify…) ou servez-la en local : elle fonctionnera alors partout, sans rien installer d'autre.",
             errNote: "⚠️ Impossible de récupérer les données de certaines stations. Cliquez sur « Actualiser » pour réessayer.",
@@ -261,6 +293,10 @@
             forecast: "snow next 3 days",
             top: "summit",
             favOnly: "Favorites only",
+            cards: "Cards",
+            map: "Map",
+            cams: "Webcams",
+            mapHint: "Click a resort dot to open its card. The dot color shows snow depth.",
             empty: "No resort matches your filters.",
             demoNote: "⚠️ Live snow data could not be loaded, so demo values are shown. If you opened this file directly from disk (the address starts with file://), your browser is probably blocking weather requests. Host the page online (GitHub Pages, Netlify…) or serve it locally: it will then work everywhere, with nothing else to install.",
             errNote: "⚠️ Could not fetch data for some resorts. Click Refresh to retry.",
@@ -304,6 +340,51 @@
             forecast: (h >> 3) % 24,
             temp: -1 - (h % 8)
           };
+        }
+
+        /* ---------- map (self-contained SVG, no dependencies) ---------- */
+        var MAP_W = 700, MAP_H = 660;
+        var LON_MIN = -5.6, LON_MAX = 10.0, LAT_MIN = 41.2, LAT_MAX = 51.3;
+        var FRANCE = [
+          [1.85, 50.95], [2.55, 51.05], [3.05, 50.63], [4.15, 50.30], [4.85, 50.10],
+          [5.50, 49.95], [6.35, 49.55], [7.62, 49.17], [7.85, 48.55], [7.62, 47.55],
+          [7.05, 47.35], [6.85, 46.95], [6.10, 46.25], [6.85, 45.87], [6.90, 45.30],
+          [7.65, 45.10], [7.40, 44.15], [7.65, 43.95], [7.50, 43.78], [7.27, 43.70],
+          [7.00, 43.55], [6.65, 43.15], [5.40, 43.30], [4.85, 43.40], [3.90, 43.60],
+          [3.60, 43.40], [3.05, 42.70], [3.16, 42.43], [2.15, 42.43], [1.00, 42.60],
+          [0.70, 42.65], [-0.75, 42.90], [-1.25, 43.05], [-1.75, 43.37], [-1.45, 43.65],
+          [-1.25, 44.60], [-1.10, 45.60], [-1.20, 46.15], [-1.80, 46.40], [-2.20, 47.30],
+          [-2.75, 47.65], [-4.30, 47.99], [-4.75, 48.05], [-4.60, 48.40], [-4.15, 48.55],
+          [-3.65, 48.75], [-2.00, 48.65], [-1.50, 48.60], [-1.30, 49.30], [-1.60, 49.65],
+          [-1.95, 49.72], [-1.10, 49.40], [0.10, 49.50], [0.25, 49.90], [1.55, 50.20]
+        ];
+        var CORSICA = [
+          [9.35, 41.55], [9.55, 42.50], [9.40, 43.00], [9.00, 43.00],
+          [8.60, 42.95], [8.70, 42.40], [8.75, 41.95], [8.75, 41.55]
+        ];
+        function mapX(lo) { return (lo - LON_MIN) / (LON_MAX - LON_MIN) * MAP_W; }
+        function mapY(la) { return (LAT_MAX - la) / (LAT_MAX - LAT_MIN) * MAP_H; }
+        function polyPath(pts) {
+          var d = "";
+          for (var i = 0; i < pts.length; i++) {
+            d += (i === 0 ? "M" : " L") + mapX(pts[i][0]).toFixed(1) + "," + mapY(pts[i][1]).toFixed(1);
+          }
+          return d + " Z";
+        }
+        function francePathsSvg() {
+          return '<path class="france" d="' + polyPath(FRANCE) + '"></path>' +
+                 '<path class="france" d="' + polyPath(CORSICA) + '"></path>';
+        }
+        function depthColor(d) {
+          if (typeof d !== "number") { return "#b8c4d4"; }
+          if (d === 0) { return "#d3dce8"; }
+          if (d <= 30) { return "#8fc1ea"; }
+          if (d <= 60) { return "#4f9adb"; }
+          if (d <= 100) { return "#2f7fd1"; }
+          return "#1b4f8f";
+        }
+        function dotR(d) {
+          return (typeof d === "number" && d > 0) ? Math.min(7, 4 + d / 40) : 4;
         }
 
         /* ---------- live fetch (Open-Meteo, free, no key) ---------- */
@@ -440,6 +521,42 @@
         var elLang = document.getElementById("lang");
         var elMeta = document.getElementById("t-meta");
         var favOnly = false;
+        var view = "cards";
+
+        function onId(id, type, fn) {
+          var el = document.getElementById(id);
+          if (el) { el.addEventListener(type, fn); }
+        }
+
+        function setView(v) {
+          view = v;
+          var g = document.getElementById("grid");
+          var mv = document.getElementById("map-view");
+          if (g) { g.classList.toggle("view-hidden", v !== "cards"); }
+          if (mv) { mv.classList.toggle("view-hidden", v !== "map"); }
+          var b1 = document.getElementById("view-cards");
+          var b2 = document.getElementById("view-map");
+          if (b1) { b1.classList.toggle("active", v === "cards"); }
+          if (b2) { b2.classList.toggle("active", v === "map"); }
+          if (v === "map") { renderMap(); }
+        }
+
+        function renderMap() {
+          var g = document.getElementById("map-dots");
+          if (!g) { return; }
+          var outline = document.getElementById("map-outline");
+          if (outline && !outline.firstChild) { outline.innerHTML = francePathsSvg(); }
+          var html = "";
+          RESORTS.forEach(function (r) {
+            var m = metric(r);
+            var d = (m && typeof m.depth === "number") ? m.depth : null;
+            html += '<circle class="dot" cx="' + mapX(r.lo).toFixed(1) + '" cy="' + mapY(r.la).toFixed(1) +
+              '" r="' + dotR(d).toFixed(1) + '" fill="' + depthColor(d) +
+              '" data-n="' + escapeHtml(r.n) + '"><title>' + escapeHtml(r.n) +
+              (typeof d === "number" ? " · " + d + " cm" : "") + "</title></circle>";
+          });
+          g.innerHTML = html;
+        }
 
         function populateRegionSelect() {
           var current = elRegion.value;
@@ -469,6 +586,9 @@
           setHtml("t-footer", t("footer"));
           setTxt("demo-note", t("demoNote"));
           setTxt("err-note", t("errNote"));
+          setTxt("view-cards", t("cards"));
+          setTxt("view-map", t("map"));
+          setTxt("map-hint", t("mapHint"));
           populateRegionSelect();
           document.documentElement.lang = LANG;
         }
@@ -495,17 +615,20 @@
           var depthVal = m ? m.depth : null;
           var pct = (typeof depthVal === "number") ? Math.min(100, Math.round(depthVal / 250 * 100)) : 0;
           var snowClass = (m && m.fresh && m.fresh > 0) ? " ❄️" : "";
+          var popup = (m && typeof m.temp === "number") ? " · " + (m.temp > 0 ? "+" : "") + m.temp + "°C" : "";
+          var depthTxt = (typeof depthVal === "number") ? depthVal + " cm" : t("na");
           return (
-            '<div class="card">' +
+            '<div class="card" data-resort="' + escapeHtml(r.n) + '">' +
               '<button class="star ' + (favs[r.n] ? "on" : "") + '" data-fav="' + escapeHtml(r.n) + '" title="' + t("fav") + '">' + (favs[r.n] ? "★" : "☆") + "</button>" +
               "<h2>" + escapeHtml(r.n) + "</h2>" +
               '<div class="region">' + escapeHtml(REGIONS[r.r][LANG]) + " · " + t("top") + " " + r.top + " m</div>" +
-              '<div class="depth"><strong>' + fmt(depthVal, "") + '</strong><span>cm ' + escapeHtml(t("depth")) + (m && typeof m.temp === "number" ? " · " + (m.temp > 0 ? "+" : "") + m.temp + "°C" : "") + snowClass + "</span></div>" +
+              '<div class="depth"><strong>' + escapeHtml(depthTxt) + '</strong><span>' + escapeHtml(t("depth")) + popup + snowClass + "</span></div>" +
               '<div class="gauge"><div style="width:' + pct + '%"></div></div>' +
               '<div class="stats">' +
                 '<div class="stat">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
                 '<div class="stat">' + escapeHtml(t("forecast")) + "<b>" + (m ? fmt(m.forecast, " cm", true) : "…") + "</b></div>" +
               "</div>" +
+              '<a class="cam" href="https://duckduckgo.com/?q=' + encodeURIComponent(r.n + " station ski webcam") + '" target="_blank" rel="noopener">📷 ' + escapeHtml(t("cams")) + "</a>" +
             "</div>"
           );
         }
@@ -522,6 +645,8 @@
           }
           notice("demo-note", mode === "demo", t("demoNote") + (lastErr ? " (" + lastErr + ")" : ""));
           notice("err-note", mode === "partial", t("errNote") + (lastErr ? " (" + lastErr + ")" : ""));
+          setView(view);
+          renderMap();
 
           var q = elSearch.value.trim().toLowerCase();
           var region = elRegion.value;
@@ -577,6 +702,23 @@
           storeSet("fsr-lang", LANG);
           render();
         });
+        onId("view-cards", "click", function () { setView("cards"); });
+        onId("view-map", "click", function () { setView("map"); });
+        onId("map", "click", function (ev) {
+          var n = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-n") : null;
+          if (!n) { return; }
+          setView("cards");
+          render();
+          var kids = grid.children || [];
+          var card = null;
+          for (var i = 0; i < kids.length; i++) {
+            if (kids[i].getAttribute && kids[i].getAttribute("data-resort") === n) { card = kids[i]; break; }
+          }
+          if (!card) { return; }
+          if (card.scrollIntoView) { try { card.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} }
+          card.classList.add("flash");
+          setTimeout(function () { card.classList.remove("flash"); }, 1600);
+        });
         grid.addEventListener("click", function (ev) {
           var btn = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-fav") : null;
           if (!btn) { return; }
@@ -593,6 +735,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="GaLFiNc3TgKwwyoaMXAvHA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="6hf1cq9XuBFZl3Ir0+mn9w==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
