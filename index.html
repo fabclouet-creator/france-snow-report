@@ -88,11 +88,22 @@
       .sw { display: inline-block; width: 11px; height: 11px; border-radius: 50%; }
       .card.flash { outline: 3px solid #1d5aa8; outline-offset: 2px; }
       .cam-btn {
-        display: block; width: calc(100% - 32px); margin-top: 10px; padding: 9px 12px; font-size: 13.5px; font-weight: 600;
+        display: flex; align-items: center; justify-content: space-between; gap: 8px;
+        width: calc(100% - 32px); margin-top: 10px; padding: 9px 12px; font-size: 13.5px; font-weight: 600;
         border: none; border-radius: 9px; color: #fff; cursor: pointer;
         background: linear-gradient(135deg, #2f7fd1, #1b4f8f);
         box-shadow: 0 2px 6px rgba(27,79,143,0.35);
       }
+      .cam-state {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 18px; height: 18px; border-radius: 50%; font-size: 11px; font-weight: 700;
+        background: rgba(255,255,255,0.25); flex: 0 0 auto;
+      }
+      .cam-state.s-ok { background: #22c55e; }
+      .cam-state.s-ko { background: #ef4444; }
+      .cam-state.s-none { background: rgba(255,255,255,0.28); opacity: 0.9; }
+      .cam-state.s-wait { background: rgba(255,255,255,0.25); animation: camPulse 1.2s infinite; }
+      @keyframes camPulse { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
       .cam-btn:hover { background: linear-gradient(135deg, #3891e6, #2260ab); }
       .modal-back { position: fixed; inset: 0; background: rgba(10,30,55,0.62); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 60; }
       .modal-back.open { display: flex; }
@@ -318,6 +329,10 @@
             camNone: "Pas encore de webcam intégrable pour cette station. Utilisez le bouton ci-dessous pour trouver ses webcams sur le web.",
             camRefresh: "🔄 Actualiser",
             camMore: "🔍 Autres webcams sur le web",
+            camOk: "Webcams en direct disponibles ✓",
+            camKo: "Webcam indisponible pour le moment ✕",
+            camNoneShort: "Pas de webcam intégrée : le bouton ouvre une recherche web",
+            camWait: "Vérification des webcams…",
             favLegend: "Favoris",
             zoomIn: "Zoomer",
             zoomOut: "Dézoomer",
@@ -360,6 +375,10 @@
             camNone: "No embeddable webcam for this resort yet. Use the button below to find its webcams on the web.",
             camRefresh: "🔄 Refresh",
             camMore: "🔍 More webcams on the web",
+            camOk: "Live webcams available ✓",
+            camKo: "Webcam unavailable right now ✕",
+            camNoneShort: "No embedded webcam: the button opens a web search",
+            camWait: "Checking webcams…",
             favLegend: "Favorites",
             zoomIn: "Zoom in",
             zoomOut: "Zoom out",
@@ -860,6 +879,72 @@
           if (back) { back.classList.remove("open"); }
         }
 
+        /* ---------- webcam availability badge ---------- */
+        var camOk = {}      /* resort -> true|false once probed */
+        var camPending = {};
+        function camStateCls(name) {
+          if (!WC[name] || !WC[name].length) { return "s-none"; }
+          if (Object.prototype.hasOwnProperty.call(camOk, name)) { return camOk[name] ? "s-ok" : "s-ko"; }
+          return "s-wait";
+        }
+        function camStateHtml(name) {
+          var cls = camStateCls(name);
+          var ic = (cls === "s-ok") ? "✓" : (cls === "s-ko") ? "✕" : (cls === "s-none") ? "i" : "…";
+          var tip = (cls === "s-ok") ? t("camOk") : (cls === "s-ko") ? t("camKo") :
+            (cls === "s-none") ? t("camNoneShort") : t("camWait");
+          return '<span class="cam-state ' + cls + '" data-camstate="' + escapeHtml(name) + '" title="' + escapeHtml(tip) + '">' + ic + "</span>";
+        }
+        function setCamState(name, cls) {
+          if (!document.querySelectorAll) { return; }
+          var nodes;
+          try { nodes = document.querySelectorAll('span[data-camstate="' + name + '"]'); }
+          catch (e) { return; }
+          var ic = (cls === "s-ok") ? "✓" : "✕";
+          var tip = (cls === "s-ok") ? t("camOk") : t("camKo");
+          for (var i = 0; i < nodes.length; i++) {
+            var n = nodes[i];
+            n.className = "cam-state " + cls;
+            n.textContent = ic;
+            n.title = tip;
+          }
+        }
+        function checkCam(name) {
+          var urls = WC[name] || [];
+          if (!urls.length) { return; }
+          if (Object.prototype.hasOwnProperty.call(camOk, name)) {
+            setCamState(name, camOk[name] ? "s-ok" : "s-ko");
+            return;
+          }
+          if (typeof Image === "undefined" || camPending[name]) { return; }
+          camPending[name] = true;
+          var img = new Image();
+          var done = false;
+          function finish(okFlag) {
+            if (done) { return; }
+            done = true;
+            camOk[name] = okFlag;
+            setCamState(name, okFlag ? "s-ok" : "s-ko");
+          }
+          var timer = setTimeout(function () { finish(false); }, 10000);
+          img.onload = function () { clearTimeout(timer); finish(true); };
+          img.onerror = function () { clearTimeout(timer); finish(false); };
+          img.src = urls[0];
+        }
+        function checkCams() {
+          var g = document.getElementById("grid");
+          if (!g || !g.querySelectorAll) { return; }
+          var nodes;
+          try { nodes = g.querySelectorAll("span[data-camstate]"); }
+          catch (e) { return; }
+          var seen = {};
+          for (var i = 0; i < nodes.length; i++) {
+            var name = nodes[i].getAttribute && nodes[i].getAttribute("data-camstate");
+            if (!name || seen[name]) { continue; }
+            seen[name] = true;
+            checkCam(name);
+          }
+        }
+
         function setView(v) {
           view = v;
           var g = document.getElementById("grid");
@@ -973,7 +1058,7 @@
                 '<div class="stat">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
                 '<div class="stat">' + escapeHtml(t("forecast")) + "<b>" + (m ? fmt(m.forecast, " cm", true) : "…") + "</b></div>" +
               "</div>" +
-              '<button class="cam-btn" type="button" data-cams="' + escapeHtml(r.n) + '">📷 ' + escapeHtml(t("cams")) + "</button>" +
+              '<button class="cam-btn" type="button" data-cams="' + escapeHtml(r.n) + '">📷 ' + escapeHtml(t("cams")) + camStateHtml(r.n) + "</button>" +
             "</div>"
           );
         }
@@ -1027,6 +1112,7 @@
             else { html += cardHtml(r, metric(r)); }
           });
           grid.innerHTML = html;
+          checkCams();
         }
 
         /* ---------- events ---------- */
@@ -1153,6 +1239,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="m1PDIS5+SsrcCAWK4zuldA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="1UgFJ/VvpgH5xwwX6rk5cQ==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
