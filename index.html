@@ -59,8 +59,11 @@
       .depth { display: flex; align-items: baseline; gap: 6px; }
       .depth strong { font-size: 30px; line-height: 1; color: var(--snow-deep); }
       .depth span { font-size: 13px; color: var(--muted); }
-      .gauge { height: 8px; background: #e3ecf7; border-radius: 6px; margin: 10px 0 12px; overflow: hidden; }
+      .gauge { height: 8px; background: #e3ecf7; border-radius: 6px; margin: 10px 0 8px; overflow: hidden; }
       .gauge > div { height: 100%; background: linear-gradient(90deg, #7db9ea, #2f7fd1); border-radius: 6px; }
+      .alts { margin: 6px 0 2px; }
+      .alt-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); background: #f7faff; border-radius: 6px; padding: 3px 9px; margin-bottom: 3px; }
+      .alt-row b { color: var(--snow-deep); font-weight: 600; }
       .stats { display: flex; gap: 8px; }
       .stat {
         flex: 1; background: #f2f7ff; border-radius: 9px; padding: 7px 9px; font-size: 12px; color: var(--muted);
@@ -180,94 +183,94 @@
       (function () {
         "use strict";
 
-        /* ---------- Resorts (name, region, lat, lon, top altitude m) ---------- */
+        /* ---------- Resorts (name, region, lat, lon, top altitude m, base altitude m) ---------- */
         var RESORTS = [
-          { n: "Chamonix Mont-Blanc", r: "haute-savoie", la: 45.92, lo: 6.87, top: 3275 },
-          { n: "Les Houches", r: "haute-savoie", la: 45.90, lo: 6.79, top: 1900 },
-          { n: "Megève (Evasion Mont-Blanc)", r: "haute-savoie", la: 45.86, lo: 6.62, top: 2350 },
-          { n: "La Clusaz", r: "haute-savoie", la: 45.90, lo: 6.42, top: 2470 },
-          { n: "Le Grand-Bornand", r: "haute-savoie", la: 45.94, lo: 6.36, top: 2050 },
-          { n: "Les Contamines", r: "haute-savoie", la: 45.80, lo: 6.73, top: 2500 },
-          { n: "Avoriaz", r: "haute-savoie", la: 46.19, lo: 6.84, top: 2266 },
-          { n: "Morzine", r: "haute-savoie", la: 46.19, lo: 6.71, top: 2012 },
-          { n: "Les Gets", r: "haute-savoie", la: 46.15, lo: 6.67, top: 2002 },
-          { n: "Châtel", r: "haute-savoie", la: 46.27, lo: 6.84, top: 2130 },
-          { n: "Samoëns (Grand Massif)", r: "haute-savoie", la: 46.08, lo: 6.73, top: 2500 },
-          { n: "Flaine (Grand Massif)", r: "haute-savoie", la: 46.02, lo: 6.71, top: 2500 },
+          { n: "Chamonix Mont-Blanc", r: "haute-savoie", la: 45.92, lo: 6.87, top: 3275, ba: 1035 },
+          { n: "Les Houches", r: "haute-savoie", la: 45.90, lo: 6.79, top: 1900, ba: 1000 },
+          { n: "Megève (Evasion Mont-Blanc)", r: "haute-savoie", la: 45.86, lo: 6.62, top: 2350, ba: 1113 },
+          { n: "La Clusaz", r: "haute-savoie", la: 45.90, lo: 6.42, top: 2470, ba: 1100 },
+          { n: "Le Grand-Bornand", r: "haute-savoie", la: 45.94, lo: 6.36, top: 2050, ba: 1000 },
+          { n: "Les Contamines", r: "haute-savoie", la: 45.80, lo: 6.73, top: 2500, ba: 1170 },
+          { n: "Avoriaz", r: "haute-savoie", la: 46.19, lo: 6.84, top: 2266, ba: 1800 },
+          { n: "Morzine", r: "haute-savoie", la: 46.19, lo: 6.71, top: 2012, ba: 1000 },
+          { n: "Les Gets", r: "haute-savoie", la: 46.15, lo: 6.67, top: 2002, ba: 1150 },
+          { n: "Châtel", r: "haute-savoie", la: 46.27, lo: 6.84, top: 2130, ba: 1200 },
+          { n: "Samoëns (Grand Massif)", r: "haute-savoie", la: 46.08, lo: 6.73, top: 2500, ba: 720 },
+          { n: "Flaine (Grand Massif)", r: "haute-savoie", la: 46.02, lo: 6.71, top: 2500, ba: 1600 },
 
-          { n: "Val d'Isère", r: "savoie", la: 45.57, lo: 6.98, top: 3300 },
-          { n: "Tignes", r: "savoie", la: 45.47, lo: 6.90, top: 3450 },
-          { n: "Les Arcs", r: "savoie", la: 45.57, lo: 6.80, top: 3226 },
-          { n: "La Plagne", r: "savoie", la: 45.54, lo: 6.77, top: 3250 },
-          { n: "Val Thorens", r: "savoie", la: 45.30, lo: 6.58, top: 3230 },
-          { n: "Courchevel", r: "savoie", la: 45.42, lo: 6.64, top: 2738 },
-          { n: "Méribel", r: "savoie", la: 45.40, lo: 6.57, top: 2952 },
-          { n: "Les Menuires", r: "savoie", la: 45.32, lo: 6.53, top: 2842 },
-          { n: "Pralognan-la-Vanoise", r: "savoie", la: 45.38, lo: 6.82, top: 2600 },
-          { n: "Sainte-Foy Tarentaise", r: "savoie", la: 45.62, lo: 6.78, top: 2620 },
-          { n: "La Rosière", r: "savoie", la: 45.64, lo: 6.83, top: 2800 },
-          { n: "Valmorel", r: "savoie", la: 45.44, lo: 6.44, top: 2550 },
-          { n: "Saint-François-Longchamp", r: "savoie", la: 45.47, lo: 6.38, top: 2484 },
-          { n: "Saint-Sorlin-d'Arves", r: "savoie", la: 45.22, lo: 6.26, top: 2600 },
-          { n: "La Toussuire", r: "savoie", la: 45.29, lo: 6.24, top: 2439 },
-          { n: "Val Cenis", r: "savoie", la: 45.27, lo: 6.87, top: 3000 },
+          { n: "Val d'Isère", r: "savoie", la: 45.57, lo: 6.98, top: 3300, ba: 1850 },
+          { n: "Tignes", r: "savoie", la: 45.47, lo: 6.90, top: 3450, ba: 2100 },
+          { n: "Les Arcs", r: "savoie", la: 45.57, lo: 6.80, top: 3226, ba: 1650 },
+          { n: "La Plagne", r: "savoie", la: 45.54, lo: 6.77, top: 3250, ba: 1970 },
+          { n: "Val Thorens", r: "savoie", la: 45.30, lo: 6.58, top: 3230, ba: 2300 },
+          { n: "Courchevel", r: "savoie", la: 45.42, lo: 6.64, top: 2738, ba: 1850 },
+          { n: "Méribel", r: "savoie", la: 45.40, lo: 6.57, top: 2952, ba: 1450 },
+          { n: "Les Menuires", r: "savoie", la: 45.32, lo: 6.53, top: 2842, ba: 1850 },
+          { n: "Pralognan-la-Vanoise", r: "savoie", la: 45.38, lo: 6.82, top: 2600, ba: 1410 },
+          { n: "Sainte-Foy Tarentaise", r: "savoie", la: 45.62, lo: 6.78, top: 2620, ba: 1550 },
+          { n: "La Rosière", r: "savoie", la: 45.64, lo: 6.83, top: 2800, ba: 1850 },
+          { n: "Valmorel", r: "savoie", la: 45.44, lo: 6.44, top: 2550, ba: 1400 },
+          { n: "Saint-François-Longchamp", r: "savoie", la: 45.47, lo: 6.38, top: 2484, ba: 1650 },
+          { n: "Saint-Sorlin-d'Arves", r: "savoie", la: 45.22, lo: 6.26, top: 2600, ba: 1350 },
+          { n: "La Toussuire", r: "savoie", la: 45.29, lo: 6.24, top: 2439, ba: 1750 },
+          { n: "Val Cenis", r: "savoie", la: 45.27, lo: 6.87, top: 3000, ba: 1400 },
 
-          { n: "Les Deux Alpes", r: "isere", la: 45.02, lo: 6.12, top: 3600 },
-          { n: "Alpe d'Huez", r: "isere", la: 45.09, lo: 6.07, top: 3330 },
-          { n: "Chamrousse", r: "isere", la: 45.11, lo: 5.88, top: 2250 },
-          { n: "Villard-de-Lans", r: "isere", la: 45.07, lo: 5.55, top: 1560 },
+          { n: "Les Deux Alpes", r: "isere", la: 45.02, lo: 6.12, top: 3600, ba: 1300 },
+          { n: "Alpe d'Huez", r: "isere", la: 45.09, lo: 6.07, top: 3330, ba: 1860 },
+          { n: "Chamrousse", r: "isere", la: 45.11, lo: 5.88, top: 2250, ba: 1650 },
+          { n: "Villard-de-Lans", r: "isere", la: 45.07, lo: 5.55, top: 1560, ba: 1050 },
 
-          { n: "Serre Chevalier", r: "hautes-alpes", la: 44.94, lo: 6.59, top: 2810 },
-          { n: "Montgenèvre", r: "hautes-alpes", la: 44.93, lo: 6.72, top: 2700 },
-          { n: "Vars", r: "hautes-alpes", la: 44.78, lo: 6.72, top: 2745 },
-          { n: "Risoul", r: "hautes-alpes", la: 44.77, lo: 6.70, top: 2600 },
-          { n: "Puy-Saint-Vincent", r: "hautes-alpes", la: 44.83, lo: 6.57, top: 2750 },
-          { n: "Les Orres", r: "hautes-alpes", la: 44.73, lo: 6.52, top: 2720 },
-          { n: "SuperDévoluy", r: "hautes-alpes", la: 44.64, lo: 6.28, top: 2692 },
-          { n: "Orcières Merlette", r: "hautes-alpes", la: 44.69, lo: 6.31, top: 3250 },
+          { n: "Serre Chevalier", r: "hautes-alpes", la: 44.94, lo: 6.59, top: 2810, ba: 1350 },
+          { n: "Montgenèvre", r: "hautes-alpes", la: 44.93, lo: 6.72, top: 2700, ba: 1850 },
+          { n: "Vars", r: "hautes-alpes", la: 44.78, lo: 6.72, top: 2745, ba: 1650 },
+          { n: "Risoul", r: "hautes-alpes", la: 44.77, lo: 6.70, top: 2600, ba: 1650 },
+          { n: "Puy-Saint-Vincent", r: "hautes-alpes", la: 44.83, lo: 6.57, top: 2750, ba: 1200 },
+          { n: "Les Orres", r: "hautes-alpes", la: 44.73, lo: 6.52, top: 2720, ba: 1650 },
+          { n: "SuperDévoluy", r: "hautes-alpes", la: 44.64, lo: 6.28, top: 2692, ba: 1450 },
+          { n: "Orcières Merlette", r: "hautes-alpes", la: 44.69, lo: 6.31, top: 3250, ba: 1250 },
 
-          { n: "Auron", r: "alpes-sud", la: 44.14, lo: 6.94, top: 2450 },
-          { n: "Isola 2000", r: "alpes-sud", la: 44.19, lo: 7.06, top: 2610 },
-          { n: "Valberg", r: "alpes-sud", la: 44.10, lo: 6.72, top: 2570 },
-          { n: "Pra-Loup", r: "alpes-sud", la: 44.39, lo: 6.65, top: 2500 },
-          { n: "Val d'Allos - La Foux", r: "alpes-sud", la: 44.23, lo: 6.62, top: 2600 },
+          { n: "Auron", r: "alpes-sud", la: 44.14, lo: 6.94, top: 2450, ba: 1600 },
+          { n: "Isola 2000", r: "alpes-sud", la: 44.19, lo: 7.06, top: 2610, ba: 2000 },
+          { n: "Valberg", r: "alpes-sud", la: 44.10, lo: 6.72, top: 2570, ba: 1668 },
+          { n: "Pra-Loup", r: "alpes-sud", la: 44.39, lo: 6.65, top: 2500, ba: 1600 },
+          { n: "Val d'Allos - La Foux", r: "alpes-sud", la: 44.23, lo: 6.62, top: 2600, ba: 1800 },
 
-          { n: "Les Rousses", r: "jura", la: 46.42, lo: 5.97, top: 1680 },
-          { n: "Métabief", r: "jura", la: 46.80, lo: 6.40, top: 1463 },
-          { n: "Monts-Jura", r: "jura", la: 46.34, lo: 6.01, top: 1720 },
+          { n: "Les Rousses", r: "jura", la: 46.42, lo: 5.97, top: 1680, ba: 1150 },
+          { n: "Métabief", r: "jura", la: 46.80, lo: 6.40, top: 1463, ba: 900 },
+          { n: "Monts-Jura", r: "jura", la: 46.34, lo: 6.01, top: 1720, ba: 1000 },
 
-          { n: "La Bresse - Hohneck", r: "vosges", la: 48.07, lo: 7.07, top: 1363 },
-          { n: "Markstein", r: "vosges", la: 47.96, lo: 7.06, top: 1265 },
-          { n: "Le Ventron", r: "vosges", la: 48.04, lo: 6.94, top: 1230 },
+          { n: "La Bresse - Hohneck", r: "vosges", la: 48.07, lo: 7.07, top: 1363, ba: 900 },
+          { n: "Markstein", r: "vosges", la: 47.96, lo: 7.06, top: 1265, ba: 1100 },
+          { n: "Le Ventron", r: "vosges", la: 48.04, lo: 6.94, top: 1230, ba: 900 },
 
-          { n: "Super-Besse", r: "massif-central", la: 45.58, lo: 2.94, top: 1850 },
-          { n: "Le Mont-Dore", r: "massif-central", la: 45.57, lo: 2.81, top: 1886 },
-          { n: "Le Lioran", r: "massif-central", la: 45.38, lo: 2.72, top: 1855 },
-          { n: "Chalmazel", r: "massif-central", la: 45.72, lo: 3.87, top: 1238 },
+          { n: "Super-Besse", r: "massif-central", la: 45.58, lo: 2.94, top: 1850, ba: 1300 },
+          { n: "Le Mont-Dore", r: "massif-central", la: 45.57, lo: 2.81, top: 1886, ba: 1050 },
+          { n: "Le Lioran", r: "massif-central", la: 45.38, lo: 2.72, top: 1855, ba: 1250 },
+          { n: "Chalmazel", r: "massif-central", la: 45.72, lo: 3.87, top: 1238, ba: 1100 },
 
-          { n: "Saint-Lary-Soulan", r: "pyrenees", la: 42.80, lo: 0.32, top: 2512 },
-          { n: "Piau-Engaly", r: "pyrenees", la: 42.77, lo: 0.40, top: 2600 },
-          { n: "Peyragudes", r: "pyrenees", la: 42.79, lo: 0.58, top: 2400 },
-          { n: "Superbagnères (Luchon)", r: "pyrenees", la: 42.78, lo: 0.60, top: 2260 },
-          { n: "Le Mourtis", r: "pyrenees", la: 42.98, lo: 0.72, top: 1920 },
-          { n: "La Mongie - Grand Tourmalet", r: "pyrenees", la: 42.90, lo: 0.16, top: 2500 },
-          { n: "Luz Ardiden", r: "pyrenees", la: 42.84, lo: -0.02, top: 2500 },
-          { n: "Cauterets", r: "pyrenees", la: 42.89, lo: -0.09, top: 2400 },
-          { n: "Artouste", r: "pyrenees", la: 42.93, lo: -0.49, top: 2400 },
-          { n: "Gourette", r: "pyrenees", la: 42.95, lo: -0.35, top: 2450 },
-          { n: "La Pierre Saint-Martin", r: "pyrenees", la: 42.98, lo: -0.73, top: 2200 },
-          { n: "Guzet-Neige", r: "pyrenees", la: 42.81, lo: 1.36, top: 2100 },
-          { n: "Monts d'Olmes", r: "pyrenees", la: 42.90, lo: 1.86, top: 1825 },
-          { n: "Ax 3 Domaines", r: "pyrenees", la: 42.72, lo: 1.67, top: 2400 },
-          { n: "Ascou-Pailhères", r: "pyrenees", la: 42.78, lo: 2.09, top: 2000 },
-          { n: "Camurac", r: "pyrenees", la: 42.78, lo: 2.02, top: 1800 },
-          { n: "Les Angles", r: "pyrenees", la: 42.60, lo: 2.06, top: 2400 },
-          { n: "Puyvalador", r: "pyrenees", la: 42.63, lo: 2.27, top: 2400 },
-          { n: "Porté-Puymorens", r: "pyrenees", la: 42.57, lo: 1.90, top: 2550 },
-          { n: "Font-Romeu / Pyrénées 2000", r: "pyrenees", la: 42.47, lo: 2.04, top: 2213 },
+          { n: "Saint-Lary-Soulan", r: "pyrenees", la: 42.80, lo: 0.32, top: 2512, ba: 1700 },
+          { n: "Piau-Engaly", r: "pyrenees", la: 42.77, lo: 0.40, top: 2600, ba: 1500 },
+          { n: "Peyragudes", r: "pyrenees", la: 42.79, lo: 0.58, top: 2400, ba: 1600 },
+          { n: "Superbagnères (Luchon)", r: "pyrenees", la: 42.78, lo: 0.60, top: 2260, ba: 1750 },
+          { n: "Le Mourtis", r: "pyrenees", la: 42.98, lo: 0.72, top: 1920, ba: 1400 },
+          { n: "La Mongie - Grand Tourmalet", r: "pyrenees", la: 42.90, lo: 0.16, top: 2500, ba: 1800 },
+          { n: "Luz Ardiden", r: "pyrenees", la: 42.84, lo: -0.02, top: 2500, ba: 1680 },
+          { n: "Cauterets", r: "pyrenees", la: 42.89, lo: -0.09, top: 2400, ba: 900 },
+          { n: "Artouste", r: "pyrenees", la: 42.93, lo: -0.49, top: 2400, ba: 1400 },
+          { n: "Gourette", r: "pyrenees", la: 42.95, lo: -0.35, top: 2450, ba: 1400 },
+          { n: "La Pierre Saint-Martin", r: "pyrenees", la: 42.98, lo: -0.73, top: 2200, ba: 1600 },
+          { n: "Guzet-Neige", r: "pyrenees", la: 42.81, lo: 1.36, top: 2100, ba: 1100 },
+          { n: "Monts d'Olmes", r: "pyrenees", la: 42.90, lo: 1.86, top: 1825, ba: 1450 },
+          { n: "Ax 3 Domaines", r: "pyrenees", la: 42.72, lo: 1.67, top: 2400, ba: 1400 },
+          { n: "Ascou-Pailhères", r: "pyrenees", la: 42.78, lo: 2.09, top: 2000, ba: 1500 },
+          { n: "Camurac", r: "pyrenees", la: 42.78, lo: 2.02, top: 1800, ba: 1300 },
+          { n: "Les Angles", r: "pyrenees", la: 42.60, lo: 2.06, top: 2400, ba: 1650 },
+          { n: "Puyvalador", r: "pyrenees", la: 42.63, lo: 2.27, top: 2400, ba: 1600 },
+          { n: "Porté-Puymorens", r: "pyrenees", la: 42.57, lo: 1.90, top: 2550, ba: 1600 },
+          { n: "Font-Romeu / Pyrénées 2000", r: "pyrenees", la: 42.47, lo: 2.04, top: 2213, ba: 1700 },
 
-          { n: "Val d'Ese (Ghisoni)", r: "corse", la: 42.07, lo: 9.22, top: 1968 },
-          { n: "Col de Vergio", r: "corse", la: 42.22, lo: 8.93, top: 1400 }
+          { n: "Val d'Ese (Ghisoni)", r: "corse", la: 42.07, lo: 9.22, top: 1968, ba: 1400 },
+          { n: "Col de Vergio", r: "corse", la: 42.22, lo: 8.93, top: 1400, ba: 1400 }
         ];
 
         /* ---------- i18n ---------- */
@@ -299,10 +302,13 @@
             langBtn: "EN",
             meta: "chargement…",
             updated: "Mis à jour",
-            depth: "neige au sol",
+            depth: "neige au sommet",
             fresh: "neige fraîche 24 h",
             forecast: "neige prévue 3 j",
             top: "sommet",
+            altVillage: "Village",
+            altMid: "Mi-pente",
+            altSummit: "Sommet",
             favOnly: "Favoris uniquement",
             cards: "Dashboard",
             map: "Carte",
@@ -320,7 +326,7 @@
             demoNote: "⚠️ Données en direct indisponibles : valeurs de démonstration affichées. Si le fichier a été ouvert depuis le disque (l'adresse commence par file://), votre navigateur bloque probablement les requêtes météo. Hébergez la page en ligne (GitHub Pages, Netlify…) ou servez-la en local : elle fonctionnera alors partout, sans rien installer d'autre.",
             errNote: "⚠️ Impossible de récupérer les données de certaines stations. Cliquez sur « Actualiser » pour réessayer.",
             slowNote: "⏳ Le chargement des données est anormalement long : votre réseau ou votre navigateur bloque probablement l'accès à open-meteo.com. Testez la page sur votre téléphone en 4G/5G pour vérifier, ou essayez après avoir désactivé vos extensions de navigateur.",
-            footer: 'Données neige : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (modèles météo, CC BY 4.0). Les valeurs sont des estimations indicatives : vérifiez toujours le bulletin officiel de la station avant de partir.',
+            footer: 'Données neige : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (modèles météo, CC BY 4.0). La neige est estimée à trois altitudes par station (village / mi-pente / sommet). Les valeurs sont des estimations indicatives : vérifiez toujours le bulletin officiel de la station avant de partir.',
             statUnit: "stations",
             na: "n/d"
           },
@@ -338,10 +344,13 @@
             langBtn: "FR",
             meta: "loading…",
             updated: "Updated",
-            depth: "snow depth",
+            depth: "snow at summit",
             fresh: "fresh snow 24 h",
             forecast: "snow next 3 days",
             top: "summit",
+            altVillage: "Village",
+            altMid: "Mid-slope",
+            altSummit: "Summit",
             favOnly: "Favorites only",
             cards: "Dashboard",
             map: "Map",
@@ -359,7 +368,7 @@
             demoNote: "⚠️ Live snow data could not be loaded, so demo values are shown. If you opened this file directly from disk (the address starts with file://), your browser is probably blocking weather requests. Host the page online (GitHub Pages, Netlify…) or serve it locally: it will then work everywhere, with nothing else to install.",
             errNote: "⚠️ Could not fetch data for some resorts. Click Refresh to retry.",
             slowNote: "⏳ Loading is taking unusually long: your network or browser is probably blocking access to open-meteo.com. Try the page on your phone using 4G/5G to check, or retry after disabling your browser extensions.",
-            footer: 'Snow data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (weather models, CC BY 4.0). Values are indicative estimates: always check the resort official snow report before you go.',
+            footer: 'Snow data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (weather models, CC BY 4.0). Snow is estimated at three altitudes per resort (village / mid-slope / summit). Values are indicative estimates: always check the resort official snow report before you go.',
             statUnit: "resorts",
             na: "n/a"
           }
@@ -392,11 +401,15 @@
           var h = 0;
           var s = r.n;
           for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) % 100000; }
+          var d0 = Math.round((h % 95) + ((r.top > 2400) ? 20 : 0));
           return {
-            depth: Math.round((h % 95) + ((r.top > 2400) ? 20 : 0)),
+            depth: d0,
             fresh: h % 7,
             forecast: (h >> 3) % 24,
-            temp: -1 - (h % 8)
+            temp: -1 - (h % 8),
+            dTop: d0,
+            dMid: Math.round(d0 * 0.7),
+            dBase: Math.round(d0 * 0.45)
           };
         }
 
@@ -638,11 +651,56 @@
           return out;
         }
 
+        function midAlt(r) {
+          return Math.round((r.top + r.ba) / 2);
+        }
+
+        function parsePointMetrics(d) {
+          if (!d) { return null; }
+          var m = { depth: null, fresh: 0, forecast: 0, temp: null };
+          if (d.current && typeof d.current.temperature_2m === "number") {
+            m.temp = Math.round(d.current.temperature_2m);
+          }
+          var daily = d.daily && d.daily.snowfall_sum;
+          if (daily && daily.length >= 4) {
+            m.fresh = Math.round((daily[0] + 0) * 10) / 10;   /* last full day */
+            m.forecast = Math.round(((daily[1] || 0) + (daily[2] || 0) + (daily[3] || 0)) * 10) / 10;
+          }
+          var hourly = d.hourly && d.hourly.snow_depth;
+          if (hourly) {
+            /* start of hourly array = yesterday 00:00, so "now" is index 24 + current hour */
+            var nowHour = 24;
+            if (d.current && d.current.time) {
+              var hh = parseInt(d.current.time.slice(11, 13), 10);
+              if (hh >= 0 && hh <= 24) { nowHour = 24 + hh; }
+            }
+            var max24 = -1;
+            var seen = false;
+            var start = Math.max(1, nowHour - 23);
+            var end = Math.min(nowHour + 1, hourly.length);
+            for (var j = start; j < end; j++) {
+              var v = hourly[j];
+              if (typeof v === "number") { seen = true; if (v > max24) { max24 = v; } }
+            }
+            if (seen && max24 >= 0) { m.depth = Math.round(max24 * 100); }
+          }
+          return m;
+        }
+
         function fetchChunk(list) {
-          var la = list.map(function (x) { return x.la.toFixed(2); }).join(",");
-          var lo = list.map(function (x) { return x.lo.toFixed(2); }).join(",");
-          var url = "https://api.open-meteo.com/v1/forecast?latitude=" + la +
-            "&longitude=" + lo +
+          /* 3 elevation points per resort: summit / mid-slope / village base */
+          var la = [], lo = [], el = [];
+          list.forEach(function (r) {
+            var alts = [r.top, midAlt(r), r.ba];
+            for (var k = 0; k < 3; k++) {
+              la.push(r.la.toFixed(2));
+              lo.push(r.lo.toFixed(2));
+              el.push(alts[k]);
+            }
+          });
+          var url = "https://api.open-meteo.com/v1/forecast?latitude=" + la.join(",") +
+            "&longitude=" + lo.join(",") +
+            "&elevation=" + el.join(",") +
             "&current=temperature_2m" +
             "&hourly=snow_depth" +
             "&daily=snowfall_sum" +
@@ -656,37 +714,23 @@
           }).then(function (data) {
             var arr = Array.isArray(data) ? data : [data];
             list.forEach(function (r, i) {
-              var d = arr[i];
-              if (!d) { return; }
-              var m = { depth: null, fresh: 0, forecast: 0, temp: null };
-
-              if (d.current && typeof d.current.temperature_2m === "number") {
-                m.temp = Math.round(d.current.temperature_2m);
-              }
-              var daily = d.daily && d.daily.snowfall_sum;
-              if (daily && daily.length >= 4) {
-                m.fresh = Math.round((daily[0] + 0) * 10) / 10;   /* last full day */
-                m.forecast = Math.round(((daily[1] || 0) + (daily[2] || 0) + (daily[3] || 0)) * 10) / 10;
-              }
-              var hourly = d.hourly && d.hourly.snow_depth;
-              if (hourly) {
-                /* start of hourly array = yesterday 00:00, so "now" is index 24 + current hour */
-                var nowHour = 24;
-                if (d.current && d.current.time) {
-                  var hh = parseInt(d.current.time.slice(11, 13), 10);
-                  if (hh >= 0 && hh <= 24) { nowHour = 24 + hh; }
-                }
-                var max24 = -1;
-                var seen = false;
-                var start = Math.max(1, nowHour - 23);
-                var end = Math.min(nowHour + 1, hourly.length);
-                for (var j = start; j < end; j++) {
-                  var v = hourly[j];
-                  if (typeof v === "number") { seen = true; if (v > max24) { max24 = v; } }
-                }
-                if (seen && max24 >= 0) { m.depth = Math.round(max24 * 100); }
-              }
-              DATA[r.n] = m;
+              var mTop = parsePointMetrics(arr[3 * i]);
+              var mMid = parsePointMetrics(arr[3 * i + 1]);
+              var mBase = parsePointMetrics(arr[3 * i + 2]);
+              if (!mTop && !mMid && !mBase) { return; }
+              var head = mMid || mTop || mBase;
+              var temp = null;
+              if (mMid && typeof mMid.temp === "number") { temp = mMid.temp; }
+              else if (mTop && typeof mTop.temp === "number") { temp = mTop.temp; }
+              DATA[r.n] = {
+                depth: mTop ? mTop.depth : null,
+                fresh: head ? head.fresh : 0,
+                forecast: head ? head.forecast : 0,
+                temp: temp,
+                dTop: mTop ? mTop.depth : null,
+                dMid: mMid ? mMid.depth : null,
+                dBase: mBase ? mBase.depth : null
+              };
             });
             return true;
           });
@@ -705,7 +749,7 @@
           renderMeta();
           var slowEl = document.getElementById("slow-note");
           if (slowEl) { slowEl.classList.remove("show"); }
-          var chunks = chunk(RESORTS, 20);
+          var chunks = chunk(RESORTS, 10);
           var slowTimer = setTimeout(function () {
             if (mode === "loading" && slowEl) {
               slowEl.textContent = t("slowNote") + (lastErr ? " (" + lastErr + ")" : "");
@@ -920,6 +964,11 @@
               '<div class="region">' + escapeHtml(REGIONS[r.r][LANG]) + " · " + t("top") + " " + r.top + " m</div>" +
               '<div class="depth"><strong>' + escapeHtml(depthTxt) + '</strong><span>' + escapeHtml(t("depth")) + popup + snowClass + "</span></div>" +
               '<div class="gauge"><div style="width:' + pct + '%"></div></div>' +
+              '<div class="alts">' +
+                '<div class="alt-row"><span>' + escapeHtml(t("altVillage")) + " · " + r.ba + " m</span><b>" + ((m && typeof m.dBase === "number") ? m.dBase + " cm" : "…") + "</b></div>" +
+                '<div class="alt-row"><span>' + escapeHtml(t("altMid")) + " · " + midAlt(r) + " m</span><b>" + ((m && typeof m.dMid === "number") ? m.dMid + " cm" : "…") + "</b></div>" +
+                '<div class="alt-row"><span>' + escapeHtml(t("altSummit")) + " · " + r.top + " m</span><b>" + ((m && typeof m.dTop === "number") ? m.dTop + " cm" : "…") + "</b></div>" +
+              "</div>" +
               '<div class="stats">' +
                 '<div class="stat">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
                 '<div class="stat">' + escapeHtml(t("forecast")) + "<b>" + (m ? fmt(m.forecast, " cm", true) : "…") + "</b></div>" +
@@ -1104,6 +1153,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="6epgK1m6fZQ3mU89fo0n8g==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="m1PDIS5+SsrcCAWK4zuldA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
