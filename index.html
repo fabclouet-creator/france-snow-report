@@ -80,6 +80,7 @@
       }
       .cb em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--snow-deep); padding-top: 3px; }
       .cb span { font-size: 10px; opacity: .7; padding-bottom: 3px; }
+      .cb span.today { font-weight: 700; color: var(--snow-deep); opacity: 1; }
       .stat b { display: block; font-size: 15px; color: var(--ink); margin-top: 1px; }
       .temp { position: absolute; top: 12px; left: 14px; }
       .footer { max-width: 1100px; margin: 22px auto 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
@@ -1168,15 +1169,19 @@
             for (var ci = 0; ci < 4; ci++) {
               var vpct = Math.min(100, Math.round(vals[ci] / scale * 100));
               var vlbl = (vals[ci] % 1 === 0) ? String(Math.round(vals[ci])) : String(vals[ci]);
+              var dip = null;
               var dayLbl = "";
+              var fullLbl = "";
               try {
-                dayLbl = new Date(Date.now() + (ci - 1) * 86400000)
-                  .toLocaleDateString(LANG === "fr" ? "fr-FR" : "en-GB", { weekday: "short" })
-                  .replace(".", "");
-              } catch (e) { dayLbl = ["hier", "auj.", "+1", "+2"][ci]; }
+                dip = new Date(Date.now() + (ci - 1) * 86400000);
+                dayLbl = dip.getDate() + "/" + (dip.getMonth() + 1);
+                fullLbl = dip.toLocaleDateString(LANG === "fr" ? "fr-FR" : "en-GB",
+                  { weekday: "short", day: "numeric", month: "short" });
+              } catch (e) { dayLbl = ["J-1", "auj.", "J+1", "J+2"][ci]; fullLbl = dayLbl; }
+              var spanCls = (ci === 1) ? ' class="today"' : "";
               chartHtml += '<div class="cb" style="background-image:linear-gradient(to top, rgba(125,185,234,.8) ' +
-                vpct + "%, rgba(125,185,234,.16) " + vpct + '%)" title="' + escapeHtml(dayLbl) + " : " + vlbl + ' cm">' +
-                "<em>" + vlbl + "</em><span>" + escapeHtml(dayLbl) + "</span></div>";
+                vpct + "%, rgba(125,185,234,.16) " + vpct + '%)" title="' + escapeHtml(fullLbl) + " : " + vlbl + ' cm">' +
+                "<em>" + vlbl + "</em><span" + spanCls + ">" + dayLbl + "</span></div>";
             }
             chartHtml += "</div></div>";
           }
@@ -1384,6 +1389,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="HxAtlMP+N71CQ9ewOKAqiA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="8GTqQI0sWAx+K0u2q6ipWA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
