@@ -73,14 +73,23 @@
       .snowline b { color: var(--snow-deep); font-weight: 600; }
       .chart-block { margin: 10px 0 0; }
       .chart-title { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-      .chart { display: flex; gap: 6px; }
+      .chart { display: flex; gap: 4px; }
       .cb {
-        flex: 1; height: 56px; border-radius: 6px; background: rgba(125, 185, 234, .16);
+        flex: 1; height: 50px; border-radius: 6px; background: rgba(125, 185, 234, .16);
         display: flex; flex-direction: column; justify-content: space-between; text-align: center; overflow: hidden;
       }
-      .cb em { font-style: normal; font-size: 11px; font-weight: 600; color: var(--snow-deep); padding-top: 3px; }
-      .cb span { font-size: 10px; opacity: .7; padding-bottom: 3px; }
+      .cb em { font-style: normal; font-size: 10px; font-weight: 600; color: var(--snow-deep); padding-top: 3px; }
+      .cb span { font-size: 9px; opacity: .7; padding-bottom: 3px; }
       .cb span.today { font-weight: 700; color: var(--snow-deep); opacity: 1; }
+      /* top 10 + powder day */
+      .top-wrap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 14px 2px 4px; }
+      .top-wrap:empty { display: none; }
+      .top-title { font-size: 13px; font-weight: 700; color: var(--accent); margin-right: 2px; }
+      .top-chip { font: inherit; font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); color: var(--ink); }
+      .top-chip b { color: var(--snow-deep); margin-right: 4px; }
+      .top-chip:hover { border-color: var(--snow); }
+      .card.powder { border-color: var(--snow); box-shadow: 0 0 0 2px rgba(47, 127, 209, .30); }
+      .pbadge { display: inline-block; margin: 6px 0 2px; padding: 2px 9px; border-radius: 999px; background: #e8f4ff; border: 1px solid #7db9ea; color: #0b4c75; font-size: 11px; font-weight: 700; }
       .stat b { display: block; font-size: 15px; color: var(--ink); margin-top: 1px; }
       .temp { position: absolute; top: 12px; left: 14px; }
       .footer { max-width: 1100px; margin: 22px auto 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
@@ -132,6 +141,28 @@
         background: #f2f7ff; border: 1px solid var(--line); color: var(--accent);
         text-decoration: none; cursor: pointer;
       }
+      @media (prefers-color-scheme: dark) {
+        :root { --ink: #e8eef7; --muted: #9db0ca; --bg: #0c1524; --card: #16233a; --line: #2b3d5c; --snow: #7ab8ee; --snow-deep: #a9cdf5; --accent: #c3dbf6; }
+        header { background: linear-gradient(160deg, #061a35 0%, #123c74 55%, #1d5aa8 100%); }
+        input[type="search"], select { background: #16233a; color: var(--ink); border: 1px solid var(--line); }
+        button.active { background: var(--accent); color: #061a35; border-color: var(--accent); }
+        .notice.demo { background: #473a14; border-color: #8a6d1f; color: #ffd76a; }
+        .notice.error { background: #45201f; border-color: #a05b5b; color: #ffa5a5; }
+        .gauge { background: #22314e; }
+        .alt-row, .stat { background: #1d2c47; }
+        .alt-row b { color: #a9cdf5; }
+        .cb { background: rgba(125, 185, 234, .10); }
+        .pbadge { background: rgba(122, 184, 238, .12); border-color: #3d5f8a; color: #a9cdf5; }
+        .card { box-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
+        .card.flash { outline-color: #7ab8ee; }
+        #map { background: #101c30; }
+        .map-tools button { background: #16233a; color: #c3dbf6; box-shadow: 0 1px 4px rgba(0, 0, 0, .5); }
+        .map-tools button:hover { background: #21334f; }
+        .france { fill: #1b2c48; stroke: #3d577d; }
+        .dot { stroke: #101c30; }
+        .modal { background: #16233a; color: var(--ink); }
+        .modal-actions button, .modal-actions a { background: #1d2c47; color: #c3dbf6; border-color: var(--line); }
+      }
       @media (max-width: 560px) { h1 { font-size: 21px; } .card .stats { flex-direction: column; } }
     </style>
   </head>
@@ -166,6 +197,7 @@
       <div class="notice demo" id="demo-note"></div>
       <div class="notice error" id="err-note"></div>
       <div class="notice demo" id="slow-note"></div>
+      <div id="top10" class="top-wrap"></div>
       <div class="grid" id="grid"></div>
       <div id="map-view" class="view-hidden">
         <p class="map-hint" id="map-hint"></p>
@@ -354,6 +386,8 @@
             snowAll: "neige jusqu'au village 🎿",
             rainAll: "pluie jusqu'au sommet 🌧️",
             wind: "Vent sommet",
+            topTitle: "🏆 Neige fraîche 24 h",
+            powder: "Jour poudre",
             zoomIn: "Zoomer",
             zoomOut: "Dézoomer",
             zoomReset: "Vue initiale",
@@ -409,6 +443,8 @@
             snowAll: "snow down to the village 🎿",
             rainAll: "rain up to the summit 🌧️",
             wind: "Summit wind",
+            topTitle: "🏆 Fresh snow 24 h",
+            powder: "Powder day",
             zoomIn: "Zoom in",
             zoomOut: "Zoom out",
             zoomReset: "Reset view",
@@ -453,7 +489,8 @@
           for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) % 100000; }
           var d0 = Math.round((h % 95) + ((r.top > 2400) ? 20 : 0));
           var t0 = -1 - (h % 8);
-          var c0 = h % 7, c1 = (h >> 1) % 6, c2 = (h >> 3) % 10, c3 = (h >> 5) % 4;
+          var c0 = h % 7, c1 = (h >> 1) % 6, c2 = (h >> 3) % 10, c3 = (h >> 5) % 4,
+              c4 = (h >> 6) % 7, c5 = (h >> 7) % 5, c6 = (h >> 8) % 9, c7 = (h >> 9) % 6;
           return {
             depth: d0,
             fresh: c0,
@@ -461,7 +498,7 @@
             temp: t0,
             weather: [0, 1, 2, 3, 61, 71][h % 6],
             wTop: Math.round(12 + (h % 42)),
-            chart: [c0, c1, c2, c3],
+            chart: [c0, c1, c2, c3, c4, c5, c6, c7],
             dTop: d0,
             dMid: Math.round(d0 * 0.7),
             dBase: Math.round(d0 * 0.45),
@@ -725,7 +762,10 @@
           if (daily && daily.length >= 4) {
             m.fresh = Math.round((daily[0] + 0) * 10) / 10;   /* last full day */
             m.forecast = Math.round(((daily[1] || 0) + (daily[2] || 0) + (daily[3] || 0)) * 10) / 10;
-            m.dailyVals = [daily[0], (daily[1] || 0), (daily[2] || 0), (daily[3] || 0)];
+            m.dailyVals = [];
+            for (var di = 0; di < 8; di++) {
+              m.dailyVals.push(typeof daily[di] === "number" ? daily[di] : 0);
+            }
           }
           var hourly = d.hourly && d.hourly.snow_depth;
           if (hourly) {
@@ -765,7 +805,7 @@
             "&current=temperature_2m,weather_code,wind_speed_10m" +
             "&hourly=snow_depth" +
             "&daily=snowfall_sum" +
-            "&past_days=1&forecast_days=3&timezone=Europe%2FParis";
+            "&past_days=1&forecast_days=7&timezone=Europe%2FParis";
           var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
           var abortTimer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 30000) : null;
           var p = ctrl ? fetch(url, { signal: ctrl.signal }) : fetch(url);
@@ -1059,6 +1099,8 @@
           var g = document.getElementById("grid");
           var mv = document.getElementById("map-view");
           if (g) { g.classList.toggle("view-hidden", v !== "cards"); }
+          var tE = document.getElementById("top10");
+          if (tE) { tE.classList.toggle("view-hidden", v !== "cards"); }
           if (mv) { mv.classList.toggle("view-hidden", v !== "map"); }
           var b1 = document.getElementById("view-cards");
           var b2 = document.getElementById("view-map");
@@ -1156,17 +1198,19 @@
           var sl = snowlineAlt(r, m);
           var slTxt = (sl === "snow") ? t("snowAll") : (sl === "rain") ? t("rainAll") :
             (typeof sl === "number" ? (sl + " m") : null);
+          var powder = (m && typeof m.forecast === "number" && m.forecast >= 20);
           var chartHtml = "";
-          if (m && m.chart && m.chart.length === 4) {
+          if (m && m.chart && m.chart.length >= 4) {
             var vals = m.chart.map(function (x) {
               return (typeof x === "number") ? Math.round(x * 10) / 10 : 0;
             });
             var scale = 0;
-            for (var ci = 0; ci < 4; ci++) { if (vals[ci] > scale) { scale = vals[ci]; } }
+            var nb = m.chart.length;
+            for (var ci = 0; ci < nb; ci++) { if (vals[ci] > scale) { scale = vals[ci]; } }
             scale = Math.max(4, scale);
             chartHtml = '<div class="chart-block"><div class="chart-title">' +
               escapeHtml(t("chartTitle")) + '</div><div class="chart">';
-            for (var ci = 0; ci < 4; ci++) {
+            for (var ci = 0; ci < nb; ci++) {
               var vpct = Math.min(100, Math.round(vals[ci] / scale * 100));
               var vlbl = (vals[ci] % 1 === 0) ? String(Math.round(vals[ci])) : String(vals[ci]);
               var dip = null;
@@ -1177,7 +1221,7 @@
                 dayLbl = dip.getDate() + "/" + (dip.getMonth() + 1);
                 fullLbl = dip.toLocaleDateString(LANG === "fr" ? "fr-FR" : "en-GB",
                   { weekday: "short", day: "numeric", month: "short" });
-              } catch (e) { dayLbl = ["J-1", "auj.", "J+1", "J+2"][ci]; fullLbl = dayLbl; }
+              } catch (e) { dayLbl = (ci === 1 ? "auj." : (ci < 1 ? "J" + (ci - 1) : "J+" + (ci - 1))); fullLbl = dayLbl; }
               var spanCls = (ci === 1) ? ' class="today"' : "";
               chartHtml += '<div class="cb" style="background-image:linear-gradient(to top, rgba(125,185,234,.8) ' +
                 vpct + "%, rgba(125,185,234,.16) " + vpct + '%)" title="' + escapeHtml(fullLbl) + " : " + vlbl + ' cm">' +
@@ -1189,9 +1233,10 @@
             ? "<b" + ((m.wTop >= 65) ? ' class="warn"' : "") + ">" + m.wTop + " km/h</b>"
             : "<b>…</b>";
           return (
-            '<div class="card" data-resort="' + escapeHtml(r.n) + '">' +
+            '<div class="card' + (powder ? ' powder' : '') + '" data-resort="' + escapeHtml(r.n) + '">' +
               '<button class="star ' + (favs[r.n] ? "on" : "") + '" data-fav="' + escapeHtml(r.n) + '" title="' + t("fav") + '">' + (favs[r.n] ? "★" : "☆") + "</button>" +
               "<h2>" + escapeHtml(r.n) + (icon ? " " + icon : "") + "</h2>" +
+              (powder ? '<span class="pbadge">❄️ ' + escapeHtml(t("powder")) + "</span>" : "") +
               '<div class="region">' + escapeHtml(REGIONS[r.r][LANG]) + " · " + t("top") + " " + r.top + " m</div>" +
               '<div class="depth"><strong>' + escapeHtml(depthTxt) + '</strong><span>' + escapeHtml(t("depth")) + popup + snowClass + "</span></div>" +
               '<div class="gauge"><div style="width:' + pct + '%"></div></div>' +
@@ -1252,6 +1297,31 @@
             return val(b, sortKey) - val(a, sortKey);
           });
 
+          var tEl = document.getElementById("top10");
+          if (tEl) {
+            var cands = [];
+            list.forEach(function (r0) {
+              var m0 = metric(r0);
+              if (!m0) { return; }
+              var fr0 = (typeof m0.fresh === "number") ? m0.fresh : 0;
+              var fc0 = (typeof m0.forecast === "number") ? m0.forecast : 0;
+              if (fr0 <= 0 && fc0 <= 0) { return; }
+              cands.push({ n: r0.n, fr: fr0, fc: fc0 });
+            });
+            cands.sort(function (a, b) { return (b.fr - a.fr) || (b.fc - a.fc); });
+            cands = cands.slice(0, 10);
+            var th = "";
+            if (cands.length && mode !== "loading") {
+              th = '<span class="top-title">' + escapeHtml(t("topTitle")) + "</span> ";
+              cands.forEach(function (c, i) {
+                th += '<button type="button" class="top-chip" data-top="' + escapeHtml(c.n) +
+                  '" title="' + c.fr + ' cm"><b>' + (i + 1) + "</b> " + escapeHtml(c.n) +
+                  " <span>" + c.fr + " cm</span></button>";
+              });
+            }
+            tEl.innerHTML = th;
+            tEl.classList.toggle("view-hidden", !th || view !== "cards");
+          }
           if (!list.length) {
             grid.innerHTML = '<p class="empty">' + escapeHtml(t("empty")) + "</p>";
             return;
@@ -1341,10 +1411,7 @@
         onId("map", "pointerup", mapEndPtr);
         onId("map", "pointercancel", mapEndPtr);
 
-        onId("map", "click", function (ev) {
-          if (mapDragged) { mapDragged = false; return; }
-          var n = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-n") : null;
-          if (!n) { return; }
+        function jumpToCard(n) {
           setView("cards");
           render();
           var kids = grid.children || [];
@@ -1356,6 +1423,17 @@
           if (card.scrollIntoView) { try { card.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {} }
           card.classList.add("flash");
           setTimeout(function () { card.classList.remove("flash"); }, 1600);
+        }
+        onId("map", "click", function (ev) {
+          if (mapDragged) { mapDragged = false; return; }
+          var n = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-n") : null;
+          if (!n) { return; }
+          jumpToCard(n);
+        });
+        onId("top10", "click", function (ev) {
+          var n = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-top") : null;
+          if (!n) { return; }
+          jumpToCard(n);
         });
         grid.addEventListener("click", function (ev) {
           var camBtn = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-cams") : null;
@@ -1389,6 +1467,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="8GTqQI0sWAx+K0u2q6ipWA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="hF4Z3ur2To9d0yslZ7Pmzw==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
