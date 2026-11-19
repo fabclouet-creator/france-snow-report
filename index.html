@@ -341,6 +341,7 @@
             demoNote: "⚠️ Données en direct indisponibles : valeurs de démonstration affichées. Si le fichier a été ouvert depuis le disque (l'adresse commence par file://), votre navigateur bloque probablement les requêtes météo. Hébergez la page en ligne (GitHub Pages, Netlify…) ou servez-la en local : elle fonctionnera alors partout, sans rien installer d'autre.",
             errNote: "⚠️ Impossible de récupérer les données de certaines stations. Cliquez sur « Actualiser » pour réessayer.",
             dataPartial: "certaines stations indisponibles",
+            cachedData: "dernier relevé enregistré ce jour",
             slowNote: "⏳ Le chargement des données est anormalement long : votre réseau ou votre navigateur bloque probablement l'accès à open-meteo.com. Testez la page sur votre téléphone en 4G/5G pour vérifier, ou essayez après avoir désactivé vos extensions de navigateur.",
             footer: 'Données neige : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (modèles météo, CC BY 4.0). La neige est estimée à trois altitudes par station (village / mi-pente / sommet). Les valeurs sont des estimations indicatives : vérifiez toujours le bulletin officiel de la station avant de partir.',
             statUnit: "stations",
@@ -388,6 +389,7 @@
             demoNote: "⚠️ Live snow data could not be loaded, so demo values are shown. If you opened this file directly from disk (the address starts with file://), your browser is probably blocking weather requests. Host the page online (GitHub Pages, Netlify…) or serve it locally: it will then work everywhere, with nothing else to install.",
             errNote: "⚠️ Could not fetch data for some resorts. Click Refresh to retry.",
             dataPartial: "some resorts unavailable",
+            cachedData: "last saved reading shown",
             slowNote: "⏳ Loading is taking unusually long: your network or browser is probably blocking access to open-meteo.com. Try the page on your phone using 4G/5G to check, or retry after disabling your browser extensions.",
             footer: 'Snow data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (weather models, CC BY 4.0). Snow is estimated at three altitudes per resort (village / mid-slope / summit). Values are indicative estimates: always check the resort official snow report before you go.',
             statUnit: "resorts",
@@ -771,6 +773,23 @@
           return p;
         }
 
+        /* local backup: keep the last successful data 24h (survives 429 rate limits) */
+        function saveCache() {
+          try { localStorage.setItem("fsr-cache", JSON.stringify({ t: Date.now(), d: DATA })); }
+          catch (e) {}
+        }
+        function loadCache() {
+          try {
+            var raw = localStorage.getItem("fsr-cache");
+            if (!raw) { return false; }
+            var obj = JSON.parse(raw);
+            if (!obj || !obj.d || !obj.t || (Date.now() - obj.t) > 86400000) { return false; }
+            DATA = obj.d;
+            lastUpdate = new Date(obj.t);
+            return true;
+          } catch (e) { return false; }
+        }
+
         /* retry a failed chunk twice (handles HTTP 429 rate limits silently) */
         function fetchChunkRetry(list, attempts) {
           return fetchChunk(list).catch(function (e) {
@@ -791,7 +810,7 @@
           renderMeta();
           var slowEl = document.getElementById("slow-note");
           if (slowEl) { slowEl.classList.remove("show"); }
-          var chunks = chunk(RESORTS, 10);
+          var chunks = chunk(RESORTS, 20);
           var slowTimer = setTimeout(function () {
             if (mode === "loading" && slowEl) {
               slowEl.textContent = t("slowNote") + (lastErr ? " (" + lastErr + ")" : "");
@@ -808,8 +827,9 @@
             var ok = results.filter(Boolean).length;
             if (ok === chunks.length) { mode = "live"; }
             else if (ok > 0) { mode = "partial"; }
+            else if (loadCache()) { mode = "cached"; }
             else { mode = "demo"; }
-            if (mode !== "demo") { lastUpdate = new Date(); }
+            if (mode === "live" || mode === "partial") { lastUpdate = new Date(); saveCache(); }
             render();
           });
         }
@@ -1060,7 +1080,7 @@
             elMeta.textContent = RESORTS.length + " " + t("statUnit") + " · demo";
           } else {
             elMeta.textContent = RESORTS.length + " " + t("statUnit") + " · " + t("updated") + " " + dateStr +
-              (mode === "partial" ? " · ⚠️ " + t("dataPartial") : "");
+              (mode === "partial" ? " · ⚠️ " + t("dataPartial") : (mode === "cached" ? " · ⚠️ " + t("cachedData") : ""));
           }
         }
 
@@ -1258,7 +1278,7 @@
           if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); }
         });
         document.addEventListener("visibilitychange", function () {
-          if (!document.hidden && mode === "demo") { loadLive(); }
+          if (!document.hidden && mode !== "live") { loadLive(); }
         });
 
         /* ---------- go ---------- */
@@ -1267,6 +1287,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="5yoAFYIdByUg54Lwa8Xq+w==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="xOQAnfE8PEUXPnDC2D01/g==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
