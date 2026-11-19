@@ -63,7 +63,7 @@
       .gauge > div { height: 100%; background: linear-gradient(90deg, #7db9ea, #2f7fd1); border-radius: 6px; }
       .alts { margin: 6px 0 2px; }
       .alt-row { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); background: #f7faff; border-radius: 6px; padding: 3px 9px; margin-bottom: 3px; }
-      .alt-row b { color: var(--snow-deep); font-weight: 600; }
+      .alt-row b { color: var(--snow-deep); font-weight: 600; white-space: nowrap; }
       .stats { display: flex; gap: 8px; }
       .stat {
         flex: 1; background: #f2f7ff; border-radius: 9px; padding: 7px 9px; font-size: 12px; color: var(--muted);
@@ -421,14 +421,18 @@
           var s = r.n;
           for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) % 100000; }
           var d0 = Math.round((h % 95) + ((r.top > 2400) ? 20 : 0));
+          var t0 = -1 - (h % 8);
           return {
             depth: d0,
             fresh: h % 7,
             forecast: (h >> 3) % 24,
-            temp: -1 - (h % 8),
+            temp: t0,
             dTop: d0,
             dMid: Math.round(d0 * 0.7),
-            dBase: Math.round(d0 * 0.45)
+            dBase: Math.round(d0 * 0.45),
+            tTop: t0,
+            tMid: t0 + 1,
+            tBase: t0 + 3
           };
         }
 
@@ -748,7 +752,10 @@
                 temp: temp,
                 dTop: mTop ? mTop.depth : null,
                 dMid: mMid ? mMid.depth : null,
-                dBase: mBase ? mBase.depth : null
+                dBase: mBase ? mBase.depth : null,
+                tTop: (mTop && typeof mTop.temp === "number") ? mTop.temp : null,
+                tMid: (mMid && typeof mMid.temp === "number") ? mMid.temp : null,
+                tBase: (mBase && typeof mBase.temp === "number") ? mBase.temp : null
               };
             });
             return true;
@@ -820,6 +827,11 @@
           if (v === null || typeof v === "undefined") { return t("na"); }
           if (digits) { v = Math.round(v * 10) / 10; } else { v = Math.round(v); }
           return v + unit;
+        }
+        function fmtAlt(v, tp) {
+          var out = (typeof v === "number") ? v + " cm" : "…";
+          if (typeof tp === "number") { out += " · " + (tp > 0 ? "+" : "") + tp + "°C"; }
+          return out;
         }
 
         /* ---------- render ---------- */
@@ -1050,9 +1062,9 @@
               '<div class="depth"><strong>' + escapeHtml(depthTxt) + '</strong><span>' + escapeHtml(t("depth")) + popup + snowClass + "</span></div>" +
               '<div class="gauge"><div style="width:' + pct + '%"></div></div>' +
               '<div class="alts">' +
-                '<div class="alt-row"><span>' + escapeHtml(t("altVillage")) + " · " + r.ba + " m</span><b>" + ((m && typeof m.dBase === "number") ? m.dBase + " cm" : "…") + "</b></div>" +
-                '<div class="alt-row"><span>' + escapeHtml(t("altMid")) + " · " + midAlt(r) + " m</span><b>" + ((m && typeof m.dMid === "number") ? m.dMid + " cm" : "…") + "</b></div>" +
-                '<div class="alt-row"><span>' + escapeHtml(t("altSummit")) + " · " + r.top + " m</span><b>" + ((m && typeof m.dTop === "number") ? m.dTop + " cm" : "…") + "</b></div>" +
+                '<div class="alt-row"><span>' + escapeHtml(t("altVillage")) + " · " + r.ba + " m</span><b>" + fmtAlt(m && m.dBase, m && m.tBase) + "</b></div>" +
+                '<div class="alt-row"><span>' + escapeHtml(t("altMid")) + " · " + midAlt(r) + " m</span><b>" + fmtAlt(m && m.dMid, m && m.tMid) + "</b></div>" +
+                '<div class="alt-row"><span>' + escapeHtml(t("altSummit")) + " · " + r.top + " m</span><b>" + fmtAlt(m && m.dTop, m && m.tTop) + "</b></div>" +
               "</div>" +
               '<div class="stats">' +
                 '<div class="stat">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
@@ -1239,6 +1251,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="1UgFJ/VvpgH5xwwX6rk5cQ==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="G+9cqOcIfER51T+/YRvwTg==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
