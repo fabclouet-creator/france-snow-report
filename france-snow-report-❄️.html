@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>France Snow Report · Bulletin Neige France</title>
+    <style>
+      :root {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+        --ink: #0f2340;
+        --muted: #5b6b81;
+        --bg: #eef3fa;
+        --card: #ffffff;
+        --line: #dbe4f0;
+        --snow: #2f7fd1;
+        --snow-deep: #1b4f8f;
+        --accent: #0a3060;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--ink); }
+      header {
+        background: linear-gradient(160deg, #0a3060 0%, #1d5aa8 55%, #3a86d1 100%);
+        color: #fff; padding: 26px 20px 20px;
+      }
+      .wrap { max-width: 1100px; margin: 0 auto; }
+      h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: 0.3px; }
+      .subtitle { margin: 0 0 14px; opacity: 0.92; font-size: 14px; }
+      .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+      input[type="search"], select, button {
+        font: inherit; border-radius: 8px; border: none; padding: 8px 12px; outline: none;
+      }
+      input[type="search"] { flex: 1 1 200px; min-width: 170px; background: #fff; color: var(--ink); }
+      select { background: #fff; color: var(--ink); cursor: pointer; }
+      button { cursor: pointer; background: rgba(255,255,255,0.16); color: #fff; border: 1px solid rgba(255,255,255,0.45); }
+      button:hover { background: rgba(255,255,255,0.28); }
+      button.active { background: #fff; color: var(--accent); border-color: #fff; font-weight: 600; }
+      .status-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; font-size: 12.5px; opacity: 0.95; }
+      .meta { margin: 0; }
+      main { padding: 18px 20px 30px; }
+      .notice {
+        max-width: 1100px; margin: 0 auto 14px; padding: 12px 14px; border-radius: 10px;
+        font-size: 13.5px; line-height: 1.45; display: none;
+      }
+      .notice.show { display: block; }
+      .notice.demo { background: #fff6e0; border: 1px solid #eccb7a; color: #6b4d00; }
+      .notice.error { background: #fdeaea; border: 1px solid #e5a1a1; color: #7d1f1f; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+      .card {
+        background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+        padding: 14px 16px; position: relative; box-shadow: 0 1px 3px rgba(15,35,64,0.06);
+      }
+      .card h2 { margin: 0; font-size: 16.5px; padding-right: 30px; }
+      .card .region { color: var(--muted); font-size: 12.5px; margin: 2px 0 10px; }
+      .star {
+        position: absolute; top: 10px; right: 10px; background: none; border: none;
+        font-size: 19px; color: #c8d3e2; padding: 2px; line-height: 1;
+      }
+      .star.on { color: #f5b301; }
+      .depth { display: flex; align-items: baseline; gap: 6px; }
+      .depth strong { font-size: 30px; line-height: 1; color: var(--snow-deep); }
+      .depth span { font-size: 13px; color: var(--muted); }
+      .gauge { height: 8px; background: #e3ecf7; border-radius: 6px; margin: 10px 0 12px; overflow: hidden; }
+      .gauge > div { height: 100%; background: linear-gradient(90deg, #7db9ea, #2f7fd1); border-radius: 6px; }
+      .stats { display: flex; gap: 8px; }
+      .stat {
+        flex: 1; background: #f2f7ff; border-radius: 9px; padding: 7px 9px; font-size: 12px; color: var(--muted);
+      }
+      .stat b { display: block; font-size: 15px; color: var(--ink); margin-top: 1px; }
+      .temp { position: absolute; top: 12px; left: 14px; }
+      .footer { max-width: 1100px; margin: 22px auto 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
+      .footer a { color: var(--snow); }
+      .empty { text-align: center; color: var(--muted); padding: 30px; }
+      @media (max-width: 560px) { h1 { font-size: 21px; } .card .stats { flex-direction: column; } }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="wrap">
+        <h1 id="t-title"></h1>
+        <p class="subtitle" id="t-sub"></p>
+        <div class="toolbar">
+          <input type="search" id="search" />
+          <select id="region">
+            <option value="all" id="t-allregions"></option>
+          </select>
+          <select id="sort">
+            <option value="depth" id="o-depth"></option>
+            <option value="fresh" id="o-fresh"></option>
+            <option value="forecast" id="o-forecast"></option>
+            <option value="name" id="o-name"></option>
+          </select>
+          <button id="fav-toggle"></button>
+          <button id="refresh"></button>
+          <button id="lang"></button>
+        </div>
+        <div class="status-row">
+          <p class="meta" id="t-meta"></p>
+        </div>
+      </div>
+    </header>
+    <main class="wrap">
+      <div class="notice demo" id="demo-note"></div>
+      <div class="notice error" id="err-note"></div>
+      <div class="grid" id="grid"></div>
+      <p class="footer" id="t-footer"></p>
+    </main>
+
+    <script>
+      (function () {
+        "use strict";
+
+        /* ---------- Resorts (name, region, lat, lon, top altitude m) ---------- */
+        var RESORTS = [
+          { n: "Chamonix Mont-Blanc", r: "haute-savoie", la: 45.92, lo: 6.87, top: 3275 },
+          { n: "Les Houches", r: "haute-savoie", la: 45.90, lo: 6.79, top: 1900 },
+          { n: "Megève (Evasion Mont-Blanc)", r: "haute-savoie", la: 45.86, lo: 6.62, top: 2350 },
+          { n: "La Clusaz", r: "haute-savoie", la: 45.90, lo: 6.42, top: 2470 },
+          { n: "Le Grand-Bornand", r: "haute-savoie", la: 45.94, lo: 6.36, top: 2050 },
+          { n: "Les Contamines", r: "haute-savoie", la: 45.80, lo: 6.73, top: 2500 },
+          { n: "Avoriaz", r: "haute-savoie", la: 46.19, lo: 6.84, top: 2266 },
+          { n: "Morzine", r: "haute-savoie", la: 46.19, lo: 6.71, top: 2012 },
+          { n: "Les Gets", r: "haute-savoie", la: 46.15, lo: 6.67, top: 2002 },
+          { n: "Châtel", r: "haute-savoie", la: 46.27, lo: 6.84, top: 2130 },
+          { n: "Samoëns (Grand Massif)", r: "haute-savoie", la: 46.08, lo: 6.73, top: 2500 },
+          { n: "Flaine (Grand Massif)", r: "haute-savoie", la: 46.02, lo: 6.71, top: 2500 },
+
+          { n: "Val d'Isère", r: "savoie", la: 45.57, lo: 6.98, top: 3300 },
+          { n: "Tignes", r: "savoie", la: 45.47, lo: 6.90, top: 3450 },
+          { n: "Les Arcs", r: "savoie", la: 45.57, lo: 6.80, top: 3226 },
+          { n: "La Plagne", r: "savoie", la: 45.54, lo: 6.77, top: 3250 },
+          { n: "Val Thorens", r: "savoie", la: 45.30, lo: 6.58, top: 3230 },
+          { n: "Courchevel", r: "savoie", la: 45.42, lo: 6.64, top: 2738 },
+          { n: "Méribel", r: "savoie", la: 45.40, lo: 6.57, top: 2952 },
+          { n: "Les Menuires", r: "savoie", la: 45.32, lo: 6.53, top: 2842 },
+          { n: "Pralognan-la-Vanoise", r: "savoie", la: 45.38, lo: 6.82, top: 2600 },
+          { n: "Sainte-Foy Tarentaise", r: "savoie", la: 45.62, lo: 6.78, top: 2620 },
+          { n: "La Rosière", r: "savoie", la: 45.64, lo: 6.83, top: 2800 },
+          { n: "Valmorel", r: "savoie", la: 45.44, lo: 6.44, top: 2550 },
+          { n: "Saint-François-Longchamp", r: "savoie", la: 45.47, lo: 6.38, top: 2484 },
+          { n: "Saint-Sorlin-d'Arves", r: "savoie", la: 45.22, lo: 6.26, top: 2600 },
+          { n: "La Toussuire", r: "savoie", la: 45.29, lo: 6.24, top: 2439 },
+          { n: "Val Cenis", r: "savoie", la: 45.27, lo: 6.87, top: 3000 },
+
+          { n: "Les Deux Alpes", r: "isere", la: 45.02, lo: 6.12, top: 3600 },
+          { n: "Alpe d'Huez", r: "isere", la: 45.09, lo: 6.07, top: 3330 },
+          { n: "Chamrousse", r: "isere", la: 45.11, lo: 5.88, top: 2250 },
+          { n: "Villard-de-Lans", r: "isere", la: 45.07, lo: 5.55, top: 1560 },
+
+          { n: "Serre Chevalier", r: "hautes-alpes", la: 44.94, lo: 6.59, top: 2810 },
+          { n: "Montgenèvre", r: "hautes-alpes", la: 44.93, lo: 6.72, top: 2700 },
+          { n: "Vars", r: "hautes-alpes", la: 44.78, lo: 6.72, top: 2745 },
+          { n: "Risoul", r: "hautes-alpes", la: 44.77, lo: 6.70, top: 2600 },
+          { n: "Puy-Saint-Vincent", r: "hautes-alpes", la: 44.83, lo: 6.57, top: 2750 },
+          { n: "Les Orres", r: "hautes-alpes", la: 44.73, lo: 6.52, top: 2720 },
+          { n: "SuperDévoluy", r: "hautes-alpes", la: 44.64, lo: 6.28, top: 2692 },
+          { n: "Orcières Merlette", r: "hautes-alpes", la: 44.69, lo: 6.31, top: 3250 },
+
+          { n: "Auron", r: "alpes-sud", la: 44.14, lo: 6.94, top: 2450 },
+          { n: "Isola 2000", r: "alpes-sud", la: 44.19, lo: 7.06, top: 2610 },
+          { n: "Valberg", r: "alpes-sud", la: 44.10, lo: 6.72, top: 2570 },
+          { n: "Pra-Loup", r: "alpes-sud", la: 44.39, lo: 6.65, top: 2500 },
+          { n: "Val d'Allos - La Foux", r: "alpes-sud", la: 44.23, lo: 6.62, top: 2600 },
+
+          { n: "Les Rousses", r: "jura", la: 46.42, lo: 5.97, top: 1680 },
+          { n: "Métabief", r: "jura", la: 46.80, lo: 6.40, top: 1463 },
+          { n: "Monts-Jura", r: "jura", la: 46.34, lo: 6.01, top: 1720 },
+
+          { n: "La Bresse - Hohneck", r: "vosges", la: 48.07, lo: 7.07, top: 1363 },
+          { n: "Markstein", r: "vosges", la: 47.96, lo: 7.06, top: 1265 },
+          { n: "Le Ventron", r: "vosges", la: 48.04, lo: 6.94, top: 1230 },
+
+          { n: "Super-Besse", r: "massif-central", la: 45.58, lo: 2.94, top: 1850 },
+          { n: "Le Mont-Dore", r: "massif-central", la: 45.57, lo: 2.81, top: 1886 },
+          { n: "Le Lioran", r: "massif-central", la: 45.38, lo: 2.72, top: 1855 },
+          { n: "Chalmazel", r: "massif-central", la: 45.72, lo: 3.87, top: 1238 },
+
+          { n: "Saint-Lary-Soulan", r: "pyrenees", la: 42.80, lo: 0.32, top: 2512 },
+          { n: "Piau-Engaly", r: "pyrenees", la: 42.77, lo: 0.40, top: 2600 },
+          { n: "Peyragudes", r: "pyrenees", la: 42.79, lo: 0.58, top: 2400 },
+          { n: "Superbagnères (Luchon)", r: "pyrenees", la: 42.78, lo: 0.60, top: 2260 },
+          { n: "Le Mourtis", r: "pyrenees", la: 42.98, lo: 0.72, top: 1920 },
+          { n: "La Mongie - Grand Tourmalet", r: "pyrenees", la: 42.90, lo: 0.16, top: 2500 },
+          { n: "Luz Ardiden", r: "pyrenees", la: 42.84, lo: -0.02, top: 2500 },
+          { n: "Cauterets", r: "pyrenees", la: 42.89, lo: -0.09, top: 2400 },
+          { n: "Artouste", r: "pyrenees", la: 42.93, lo: -0.49, top: 2400 },
+          { n: "Gourette", r: "pyrenees", la: 42.95, lo: -0.35, top: 2450 },
+          { n: "La Pierre Saint-Martin", r: "pyrenees", la: 42.98, lo: -0.73, top: 2200 },
+          { n: "Guzet-Neige", r: "pyrenees", la: 42.81, lo: 1.36, top: 2100 },
+          { n: "Monts d'Olmes", r: "pyrenees", la: 42.90, lo: 1.86, top: 1825 },
+          { n: "Ax 3 Domaines", r: "pyrenees", la: 42.72, lo: 1.67, top: 2400 },
+          { n: "Ascou-Pailhères", r: "pyrenees", la: 42.78, lo: 2.09, top: 2000 },
+          { n: "Camurac", r: "pyrenees", la: 42.78, lo: 2.02, top: 1800 },
+          { n: "Les Angles", r: "pyrenees", la: 42.60, lo: 2.06, top: 2400 },
+          { n: "Puyvalador", r: "pyrenees", la: 42.63, lo: 2.27, top: 2400 },
+          { n: "Porté-Puymorens", r: "pyrenees", la: 42.57, lo: 1.90, top: 2550 },
+          { n: "Font-Romeu / Pyrénées 2000", r: "pyrenees", la: 42.47, lo: 2.04, top: 2213 },
+
+          { n: "Val d'Ese (Ghisoni)", r: "corse", la: 42.07, lo: 9.22, top: 1968 },
+          { n: "Col de Vergio", r: "corse", la: 42.22, lo: 8.93, top: 1400 }
+        ];
+
+        /* ---------- i18n ---------- */
+        var REGIONS = {
+          "haute-savoie": { fr: "Haute-Savoie (Alpes)", en: "Haute-Savoie (Alps)" },
+          "savoie": { fr: "Savoie (Alpes)", en: "Savoie (Alps)" },
+          "isere": { fr: "Isère (Alpes)", en: "Isère (Alps)" },
+          "hautes-alpes": { fr: "Hautes-Alpes", en: "Hautes-Alpes" },
+          "alpes-sud": { fr: "Alpes du Sud", en: "Southern Alps" },
+          "jura": { fr: "Jura", en: "Jura" },
+          "vosges": { fr: "Vosges", en: "Vosges" },
+          "massif-central": { fr: "Massif Central", en: "Massif Central" },
+          "pyrenees": { fr: "Pyrénées", en: "Pyrenees" },
+          "corse": { fr: "Corse", en: "Corsica" }
+        };
+
+        var T = {
+          fr: {
+            title: "❄️ Bulletin Neige France",
+            sub: "Neige au sol, neige fraîche et prévisions pour les stations de ski françaises. Données en direct, mises à jour à chaque ouverture.",
+            search: "Rechercher une station…",
+            allregions: "Toutes les régions",
+            sortDepth: "Trier : neige au sol",
+            sortFresh: "Trier : neige fraîche 24 h",
+            sortForecast: "Trier : prévisions 3 jours",
+            sortName: "Trier : nom",
+            fav: "Favoris",
+            refresh: "Actualiser",
+            langBtn: "EN",
+            meta: "chargement…",
+            updated: "Mis à jour",
+            depth: "neige au sol",
+            fresh: "neige fraîche 24 h",
+            forecast: "neige prévue 3 j",
+            top: "sommet",
+            favOnly: "Favoris uniquement",
+            empty: "Aucune station ne correspond.",
+            demoNote: "⚠️ Données en direct indisponibles : valeurs de démonstration affichées. Si le fichier a été ouvert depuis le disque (l'adresse commence par file://), votre navigateur bloque probablement les requêtes météo. Hébergez la page en ligne (GitHub Pages, Netlify…) ou servez-la en local : elle fonctionnera alors partout, sans rien installer d'autre.",
+            errNote: "⚠️ Impossible de récupérer les données de certaines stations. Cliquez sur « Actualiser » pour réessayer.",
+            footer: 'Données neige : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (modèles météo, CC BY 4.0). Les valeurs sont des estimations indicatives : vérifiez toujours le bulletin officiel de la station avant de partir.',
+            statUnit: "stations",
+            na: "n/d"
+          },
+          en: {
+            title: "❄️ France Snow Report",
+            sub: "Snow depth, fresh snow and forecast for French ski resorts. Live data, refreshed every time you open the page.",
+            search: "Search a resort…",
+            allregions: "All regions",
+            sortDepth: "Sort: snow depth",
+            sortFresh: "Sort: fresh snow 24 h",
+            sortForecast: "Sort: 3-day forecast",
+            sortName: "Sort: name",
+            fav: "Favorites",
+            refresh: "Refresh",
+            langBtn: "FR",
+            meta: "loading…",
+            updated: "Updated",
+            depth: "snow depth",
+            fresh: "fresh snow 24 h",
+            forecast: "snow next 3 days",
+            top: "summit",
+            favOnly: "Favorites only",
+            empty: "No resort matches your filters.",
+            demoNote: "⚠️ Live snow data could not be loaded, so demo values are shown. If you opened this file directly from disk (the address starts with file://), your browser is probably blocking weather requests. Host the page online (GitHub Pages, Netlify…) or serve it locally: it will then work everywhere, with nothing else to install.",
+            errNote: "⚠️ Could not fetch data for some resorts. Click Refresh to retry.",
+            footer: 'Snow data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (weather models, CC BY 4.0). Values are indicative estimates: always check the resort official snow report before you go.',
+            statUnit: "resorts",
+            na: "n/a"
+          }
+        };
+
+        /* ---------- storage helpers (CSP-safe) ---------- */
+        function storeGet(k, d) {
+          try { var v = localStorage.getItem(k); return v === null ? d : v; }
+          catch (e) { return d; }
+        }
+        function storeSet(k, v) {
+          try { localStorage.setItem(k, v); } catch (e) {}
+        }
+
+        var LANG = storeGet("fsr-lang", "fr");
+        if (LANG !== "fr" && LANG !== "en") { LANG = "fr"; }
+        var favRaw = storeGet("fsr-fav", "[]");
+        var favs = {};
+        try {
+          JSON.parse(favRaw).forEach(function (x) { favs[x] = true; });
+        } catch (e) { favs = {}; }
+
+        var DATA = {};      /* per resort metrics */
+        var mode = "loading"; /* loading | live | partial | demo */
+        var lastUpdate = null;
+        var lastErr = "";
+        var lastErr = "";
+
+        /* ---------- deterministic demo data ---------- */
+        function demoFor(r) {
+          var h = 0;
+          var s = r.n;
+          for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) % 100000; }
+          return {
+            depth: Math.round((h % 95) + ((r.top > 2400) ? 20 : 0)),
+            fresh: h % 7,
+            forecast: (h >> 3) % 24,
+            temp: -1 - (h % 8)
+          };
+        }
+
+        /* ---------- live fetch (Open-Meteo, free, no key) ---------- */
+        function chunk(arr, n) {
+          var out = [];
+          for (var i = 0; i < arr.length; i += n) { out.push(arr.slice(i, i + n)); }
+          return out;
+        }
+
+        function fetchChunk(list) {
+          var la = list.map(function (x) { return x.la.toFixed(2); }).join(",");
+          var lo = list.map(function (x) { return x.lo.toFixed(2); }).join(",");
+          var url = "https://api.open-meteo.com/v1/forecast?latitude=" + la +
+            "&longitude=" + lo +
+            "&current=temperature_2m" +
+            "&hourly=snow_depth" +
+            "&daily=snowfall_sum" +
+            "&past_days=1&forecast_days=3&timezone=Europe%2FParis";
+          return fetch(url).then(function (res) {
+            if (!res.ok) { throw new Error("HTTP " + res.status); }
+            return res.json();
+          }).then(function (data) {
+            var arr = Array.isArray(data) ? data : [data];
+            list.forEach(function (r, i) {
+              var d = arr[i];
+              if (!d) { return; }
+              var m = { depth: null, fresh: 0, forecast: 0, temp: null };
+
+              if (d.current && typeof d.current.temperature_2m === "number") {
+                m.temp = Math.round(d.current.temperature_2m);
+              }
+              var daily = d.daily && d.daily.snowfall_sum;
+              if (daily && daily.length >= 4) {
+                m.fresh = Math.round((daily[0] + 0) * 10) / 10;   /* last full day */
+                m.forecast = Math.round(((daily[1] || 0) + (daily[2] || 0) + (daily[3] || 0)) * 10) / 10;
+              }
+              var hourly = d.hourly && d.hourly.snow_depth;
+              if (hourly) {
+                /* start of hourly array = yesterday 00:00, so "now" is index 24 + current hour */
+                var nowHour = 24;
+                if (d.current && d.current.time) {
+                  var hh = parseInt(d.current.time.slice(11, 13), 10);
+                  if (hh >= 0 && hh <= 24) { nowHour = 24 + hh; }
+                }
+                var max24 = -1;
+                var seen = false;
+                var start = Math.max(1, nowHour - 23);
+                var end = Math.min(nowHour + 1, hourly.length);
+                for (var j = start; j < end; j++) {
+                  var v = hourly[j];
+                  if (typeof v === "number") { seen = true; if (v > max24) { max24 = v; } }
+                }
+                if (seen && max24 >= 0) { m.depth = Math.round(max24 * 100); }
+              }
+              DATA[r.n] = m;
+            });
+            return true;
+          });
+        }
+
+        function loadLive() {
+          mode = "loading";
+          renderMeta();
+          var chunks = chunk(RESORTS, 20);
+          return Promise.all(chunks.map(function (c) {
+            return fetchChunk(c).catch(function (e) {
+              lastErr = (e && e.message) ? e.message : String(e);
+              return false;
+            });
+          })).then(function (results) {
+            var ok = results.filter(Boolean).length;
+            if (ok === chunks.length) { mode = "live"; }
+            else if (ok > 0) { mode = "partial"; }
+            else { mode = "demo"; }
+            if (mode !== "demo") { lastUpdate = new Date(); }
+            render();
+          });
+        }
+
+        /* ---------- UI helpers ---------- */
+        function t(k) { return T[LANG][k]; }
+        function escapeHtml(s) {
+          return String(s).replace(/[&<>"']/g, function (c) {
+            return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+          });
+        }
+        function metric(r) {
+          if (DATA[r.n]) { return DATA[r.n]; }
+          if (mode === "demo") { return demoFor(r); }
+          return null;
+        }
+        function fmt(v, unit, digits) {
+          if (v === null || typeof v === "undefined") { return t("na"); }
+          if (digits) { v = Math.round(v * 10) / 10; } else { v = Math.round(v); }
+          return v + unit;
+        }
+
+        /* ---------- render ---------- */
+        var grid = document.getElementById("grid");
+        var elSearch = document.getElementById("search");
+        var elRegion = document.getElementById("region");
+        var elSort = document.getElementById("sort");
+        var elFav = document.getElementById("fav-toggle");
+        var elRefresh = document.getElementById("refresh");
+        var elLang = document.getElementById("lang");
+        var elMeta = document.getElementById("t-meta");
+        var favOnly = false;
+
+        function populateRegionSelect() {
+          var current = elRegion.value;
+          var seen = {};
+          var html = '<option value="all">' + t("allregions") + "</option>";
+          RESORTS.forEach(function (r) {
+            if (seen[r.r]) { return; }
+            seen[r.r] = true;
+            html += '<option value="' + r.r + '">' + REGIONS[r.r][LANG] + "</option>";
+          });
+          elRegion.innerHTML = html;
+          elRegion.value = seen[current] ? current : "all";
+        }
+
+        function applyStaticText() {
+          document.getElementById("t-title").textContent = t("title");
+          document.getElementById("t-sub").textContent = t("sub");
+          document.getElementById("t-allregions").textContent = t("allregions");
+          document.getElementById("o-depth").textContent = t("sortDepth");
+          document.getElementById("o-fresh").textContent = t("sortFresh");
+          document.getElementById("o-forecast").textContent = t("sortForecast");
+          document.getElementById("o-name").textContent = t("sortName");
+          elSearch.placeholder = t("search");
+          elFav.textContent = t("fav");
+          elRefresh.textContent = t("refresh");
+          elLang.textContent = t("langBtn");
+          elFav.classList.toggle("active", favOnly);
+          document.getElementById("t-footer").innerHTML = t("footer");
+          document.getElementById("demo-note").textContent = t("demoNote");
+          document.getElementById("err-note").textContent = t("errNote");
+          populateRegionSelect();
+          document.documentElement.lang = LANG;
+        }
+
+        function renderMeta() {
+          if (mode === "loading") { elMeta.textContent = "…"; return; }
+          var dateStr = "";
+          if (lastUpdate) {
+            try {
+              dateStr = new Intl.DateTimeFormat(LANG === "fr" ? "fr-FR" : "en-GB",
+                { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(lastUpdate);
+            } catch (e) {
+              dateStr = lastUpdate.toLocaleString();
+            }
+          }
+          if (mode === "demo") {
+            elMeta.textContent = RESORTS.length + " " + t("statUnit") + " · demo";
+          } else {
+            elMeta.textContent = RESORTS.length + " " + t("statUnit") + " · " + t("updated") + " " + dateStr;
+          }
+        }
+
+        function cardHtml(r, m) {
+          var depthVal = m ? m.depth : null;
+          var pct = (typeof depthVal === "number") ? Math.min(100, Math.round(depthVal / 250 * 100)) : 0;
+          var snowClass = (m && m.fresh && m.fresh > 0) ? " ❄️" : "";
+          return (
+            '<div class="card">' +
+              '<button class="star ' + (favs[r.n] ? "on" : "") + '" data-fav="' + escapeHtml(r.n) + '" title="' + t("fav") + '">' + (favs[r.n] ? "★" : "☆") + "</button>" +
+              "<h2>" + escapeHtml(r.n) + "</h2>" +
+              '<div class="region">' + escapeHtml(REGIONS[r.r][LANG]) + " · " + t("top") + " " + r.top + " m</div>" +
+              '<div class="depth"><strong>' + fmt(depthVal, "") + '</strong><span>cm ' + escapeHtml(t("depth")) + (m && typeof m.temp === "number" ? " · " + (m.temp > 0 ? "+" : "") + m.temp + "°C" : "") + snowClass + "</span></div>" +
+              '<div class="gauge"><div style="width:' + pct + '%"></div></div>' +
+              '<div class="stats">' +
+                '<div class="stat">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
+                '<div class="stat">' + escapeHtml(t("forecast")) + "<b>" + (m ? fmt(m.forecast, " cm", true) : "…") + "</b></div>" +
+              "</div>" +
+            "</div>"
+          );
+        }
+
+        function render() {
+          applyStaticText();
+          renderMeta();
+          document.getElementById("demo-note").classList.toggle("show", mode === "demo");
+          document.getElementById("err-note").classList.toggle("show", mode === "partial");
+          document.getElementById("demo-note").textContent = t("demoNote") + (lastErr ? " (" + lastErr + ")" : "");
+          document.getElementById("err-note").textContent = t("errNote") + (lastErr ? " (" + lastErr + ")" : "");
+          document.getElementById("demo-note").textContent = t("demoNote") + (lastErr ? " (" + lastErr + ")" : "");
+          document.getElementById("err-note").textContent = t("errNote") + (lastErr ? " (" + lastErr + ")" : "");
+
+          var q = elSearch.value.trim().toLowerCase();
+          var region = elRegion.value;
+          var sortKey = elSort.value;
+
+          var list = RESORTS.filter(function (r) {
+            if (region !== "all" && r.r !== region) { return false; }
+            if (favOnly && !favs[r.n]) { return false; }
+            if (q && r.n.toLowerCase().indexOf(q) === -1 &&
+                REGIONS[r.r][LANG].toLowerCase().indexOf(q) === -1) { return false; }
+            return true;
+          });
+
+          function val(r, key) {
+            var m = metric(r);
+            if (!m) { return key === "name" ? r.n : -1; }
+            if (key === "name") { return r.n; }
+            var v = m[key];
+            return (typeof v === "number") ? v : -1;
+          }
+          list.sort(function (a, b) {
+            if (sortKey === "name") { return val(a, "name").localeCompare(val(b, "name")); }
+            return val(b, sortKey) - val(a, sortKey);
+          });
+
+          if (!list.length) {
+            grid.innerHTML = '<p class="empty">' + escapeHtml(t("empty")) + "</p>";
+            return;
+          }
+          var html = "";
+          list.forEach(function (r) {
+            if (mode === "loading") { html += cardHtml(r, null); }
+            else { html += cardHtml(r, metric(r)); }
+          });
+          grid.innerHTML = html;
+        }
+
+        /* ---------- events ---------- */
+        var searchTimer = null;
+        elSearch.addEventListener("input", function () {
+          clearTimeout(searchTimer);
+          searchTimer = setTimeout(render, 120);
+        });
+        elRegion.addEventListener("change", render);
+        elSort.addEventListener("change", render);
+        elFav.addEventListener("click", function () {
+          favOnly = !favOnly;
+          render();
+        });
+        elRefresh.addEventListener("click", function () { loadLive(); });
+        elLang.addEventListener("click", function () {
+          LANG = (LANG === "fr") ? "en" : "fr";
+          storeSet("fsr-lang", LANG);
+          render();
+        });
+        grid.addEventListener("click", function (ev) {
+          var btn = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-fav") : null;
+          if (!btn) { return; }
+          if (favs[btn]) { delete favs[btn]; } else { favs[btn] = true; }
+          storeSet("fsr-fav", JSON.stringify(Object.keys(favs)));
+          render();
+        });
+        document.addEventListener("visibilitychange", function () {
+          if (!document.hidden && mode === "demo") { loadLive(); }
+        });
+
+        /* ---------- go ---------- */
+        render();
+        loadLive();
+      })();
+    </script>
+  </body>
+</html>
