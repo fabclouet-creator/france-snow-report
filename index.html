@@ -71,7 +71,11 @@
       .footer a { color: var(--snow); }
       .empty { text-align: center; color: var(--muted); padding: 30px; }
       .view-hidden { display: none !important; }
-      #map { width: 100%; max-width: 760px; display: block; margin: 0 auto; background: #e7f0fb; border: 1px solid var(--line); border-radius: 14px; }
+      .map-wrap { position: relative; max-width: 760px; margin: 0 auto; }
+      #map { width: 100%; display: block; background: #e7f0fb; border: 1px solid var(--line); border-radius: 14px; touch-action: none; cursor: grab; }
+      .map-tools { position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+      .map-tools button { width: 34px; height: 34px; border-radius: 8px; background: #fff; color: var(--accent); border: 1px solid var(--line); font-size: 17px; font-weight: 700; padding: 0; box-shadow: 0 1px 4px rgba(15,35,64,0.18); }
+      .map-tools button:hover { background: #eef3fa; }
       .map-hint { font-size: 13px; color: var(--muted); margin: 4px 2px 8px; }
       .france { fill: #f5f8fd; stroke: #b9c9de; stroke-width: 1.5; }
       .dot { stroke: #fff; stroke-width: 1; cursor: pointer; }
@@ -80,8 +84,27 @@
       .legend span { display: inline-flex; align-items: center; gap: 5px; }
       .sw { display: inline-block; width: 11px; height: 11px; border-radius: 50%; }
       .card.flash { outline: 3px solid #1d5aa8; outline-offset: 2px; }
-      .cam { display: inline-block; margin-top: 9px; font-size: 12.5px; color: var(--snow); text-decoration: none; }
-      .cam:hover { text-decoration: underline; }
+      .cam-btn {
+        display: block; width: calc(100% - 32px); margin-top: 10px; padding: 9px 12px; font-size: 13.5px; font-weight: 600;
+        border: none; border-radius: 9px; color: #fff; cursor: pointer;
+        background: linear-gradient(135deg, #2f7fd1, #1b4f8f);
+        box-shadow: 0 2px 6px rgba(27,79,143,0.35);
+      }
+      .cam-btn:hover { background: linear-gradient(135deg, #3891e6, #2260ab); }
+      .modal-back { position: fixed; inset: 0; background: rgba(10,30,55,0.62); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 60; }
+      .modal-back.open { display: flex; }
+      .modal { background: #fff; border-radius: 16px; max-width: 840px; width: 100%; max-height: 88vh; overflow: auto; padding: 18px 18px 14px; position: relative; }
+      .modal h2 { margin: 0 40px 8px 0; font-size: 19px; }
+      .close-x { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; border-radius: 8px; background: #f2f7ff; border: 1px solid var(--line); color: var(--ink); font-size: 15px; padding: 0; cursor: pointer; }
+      .cam-img { width: 100%; border-radius: 10px; display: block; margin: 0 0 10px; }
+      .cam-img.hide { display: none; }
+      .cam-note { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+      .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+      .modal-actions button, .modal-actions a {
+        font: inherit; font-size: 13px; padding: 8px 12px; border-radius: 8px;
+        background: #f2f7ff; border: 1px solid var(--line); color: var(--accent);
+        text-decoration: none; cursor: pointer;
+      }
       @media (max-width: 560px) { h1 { font-size: 21px; } .card .stats { flex-direction: column; } }
     </style>
   </head>
@@ -119,16 +142,35 @@
       <div class="grid" id="grid"></div>
       <div id="map-view" class="view-hidden">
         <p class="map-hint" id="map-hint"></p>
-        <svg id="map" viewBox="0 0 700 660" role="img" aria-label="Carte des stations / Map of resorts">
-          <g id="map-outline"></g>
-          <g id="map-dots"></g>
-        </svg>
+        <div class="map-wrap">
+          <svg id="map" viewBox="0 0 700 660" role="img" aria-label="Carte des stations / Map of resorts">
+            <g id="map-outline"></g>
+            <g id="map-dots"></g>
+          </svg>
+          <div class="map-tools">
+            <button id="zoom-in" type="button">+</button>
+            <button id="zoom-out" type="button">−</button>
+            <button id="zoom-reset" type="button">⟳</button>
+          </div>
+        </div>
         <div class="legend">
           <span><i class="sw" style="background:#d3dce8"></i>0</span>
           <span><i class="sw" style="background:#8fc1ea"></i>1-30</span>
           <span><i class="sw" style="background:#4f9adb"></i>31-60</span>
           <span><i class="sw" style="background:#2f7fd1"></i>61-100</span>
           <span><i class="sw" style="background:#1b4f8f"></i>100+ cm</span>
+          <span style="color:#f5b301;font-weight:700">★ <span id="t-favlegend"></span></span>
+        </div>
+      </div>
+      <div class="modal-back" id="cam-modal-back">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="close-x" id="cam-close" type="button">✕</button>
+          <h2 id="cam-title"></h2>
+          <div id="cam-body"></div>
+          <div class="modal-actions">
+            <button id="cam-refresh" type="button"></button>
+            <a id="cam-more" href="#" target="_blank" rel="noopener"></a>
+          </div>
         </div>
       </div>
       <p class="footer" id="t-footer"></p>
@@ -265,7 +307,15 @@
             cards: "Cartes",
             map: "Carte",
             cams: "Webcams",
-            mapHint: "Cliquez sur une station pour voir sa fiche. La couleur du point indique la neige au sol.",
+            mapHint: "Cliquez sur une station pour voir sa fiche. Molette ou boutons + / − pour zoomer, glissez la carte pour la déplacer. ★ = favoris.",
+            camNote: "Images en direct proposées par les stations (actualisées environ toutes les 15 minutes). Cliquez sur 🔄 pour les rafraîchir.",
+            camNone: "Pas encore de webcam intégrable pour cette station. Utilisez le bouton ci-dessous pour trouver ses webcams sur le web.",
+            camRefresh: "🔄 Actualiser",
+            camMore: "🔍 Autres webcams sur le web",
+            favLegend: "Favoris",
+            zoomIn: "Zoomer",
+            zoomOut: "Dézoomer",
+            zoomReset: "Vue initiale",
             empty: "Aucune station ne correspond.",
             demoNote: "⚠️ Données en direct indisponibles : valeurs de démonstration affichées. Si le fichier a été ouvert depuis le disque (l'adresse commence par file://), votre navigateur bloque probablement les requêtes météo. Hébergez la page en ligne (GitHub Pages, Netlify…) ou servez-la en local : elle fonctionnera alors partout, sans rien installer d'autre.",
             errNote: "⚠️ Impossible de récupérer les données de certaines stations. Cliquez sur « Actualiser » pour réessayer.",
@@ -296,7 +346,15 @@
             cards: "Cards",
             map: "Map",
             cams: "Webcams",
-            mapHint: "Click a resort dot to open its card. The dot color shows snow depth.",
+            mapHint: "Click a resort dot to open its card. Use the wheel or the + / − buttons to zoom, and drag the map to move it. ★ = favorites.",
+            camNote: "Live images provided by the resorts (refreshed about every 15 minutes). Click 🔄 to reload them.",
+            camNone: "No embeddable webcam for this resort yet. Use the button below to find its webcams on the web.",
+            camRefresh: "🔄 Refresh",
+            camMore: "🔍 More webcams on the web",
+            favLegend: "Favorites",
+            zoomIn: "Zoom in",
+            zoomOut: "Zoom out",
+            zoomReset: "Reset view",
             empty: "No resort matches your filters.",
             demoNote: "⚠️ Live snow data could not be loaded, so demo values are shown. If you opened this file directly from disk (the address starts with file://), your browser is probably blocking weather requests. Host the page online (GitHub Pages, Netlify…) or serve it locally: it will then work everywhere, with nothing else to install.",
             errNote: "⚠️ Could not fetch data for some resorts. Click Refresh to retry.",
@@ -386,6 +444,71 @@
         function dotR(d) {
           return (typeof d === "number" && d > 0) ? Math.min(7, 4 + d / 40) : 4;
         }
+
+        /* ---------- map zoom / pan ---------- */
+        var VB = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+        function clampVB() {
+          VB.w = Math.max(60, Math.min(MAP_W, VB.w));
+          VB.h = VB.w * MAP_H / MAP_W;
+          VB.x = Math.max(-VB.w * 0.5, Math.min(MAP_W - VB.w * 0.5, VB.x));
+          VB.y = Math.max(-VB.h * 0.5, Math.min(MAP_H - VB.h * 0.5, VB.y));
+        }
+        function applyViewBox() {
+          var m = document.getElementById("map");
+          if (m) {
+            m.setAttribute("viewBox", (+VB.x.toFixed(1)) + " " + (+VB.y.toFixed(1)) + " " + (+VB.w.toFixed(1)) + " " + (+VB.h.toFixed(1)));
+          }
+        }
+        function zoomAtPoint(ev, f) {
+          var svg = document.getElementById("map");
+          var r = svg ? svg.getBoundingClientRect() : null;
+          var cx, cy;
+          if (r && ev && typeof ev.clientX === "number") {
+            cx = VB.x + (ev.clientX - r.left) / r.width * VB.w;
+            cy = VB.y + (ev.clientY - r.top) / r.height * VB.h;
+          } else {
+            cx = VB.x + VB.w / 2;
+            cy = VB.y + VB.h / 2;
+          }
+          var nw = Math.max(60, Math.min(MAP_W, VB.w * f));
+          var k = nw / VB.w;
+          VB.x = cx - (cx - VB.x) * k;
+          VB.y = cy - (cy - VB.y) * k;
+          VB.w = nw;
+          clampVB();
+          applyViewBox();
+        }
+
+        /* ---------- curated live webcams (verified public streams) ---------- */
+        var WC = {
+          "Chamonix Mont-Blanc": [
+            "https://images.chamonix.net/webcams/FlegereHD.jpg",
+            "https://images.chamonix.net/webcams/CMM1MERDEGLACE.jpg",
+            "https://images.chamonix.net/webcams/AiguilleHD.jpg"
+          ],
+          "Megève (Evasion Mont-Blanc)": [
+            "https://api.skaping.com/98y9i-rqq66-U3j0E-MfH5j/media/latest/large.jpg",
+            "https://api.skaping.com/gn46V-LYfpb-ZPjNx-cFYTz/media/latest/large.jpg"
+          ],
+          "Le Grand-Bornand": [
+            "https://api.skaping.com/cZLTj-AWf2y-U9ldU-YRgWa/media/latest/large.jpg"
+          ],
+          "Châtel": [
+            "https://www.trinum.com/ibox/ftpcam/chatel_village.jpg",
+            "https://www.trinum.com/ibox/ftpcam/chatel_morclan.jpg"
+          ],
+          "Val Thorens": [
+            "https://api.skaping.com/QzlPb-9TgDQ-UcTxH-xv8KW/media/latest/large.jpg",
+            "https://api.skaping.com/0qmB-W208-FhUp-eDJW-695z/media/latest/large.jpg"
+          ],
+          "Courchevel": [
+            "https://api.skaping.com/pWfQi-2gt37-n9ACU-ciSIg/media/latest/hd.jpg"
+          ],
+          "Méribel": [
+            "https://www.trinum.com/ibox/ftpcam/1280_meribel_tougnete.jpg",
+            "https://www.trinum.com/ibox/ftpcam/meribel_bouquetin.jpg"
+          ]
+        };
 
         /* ---------- live fetch (Open-Meteo, free, no key) ---------- */
         function chunk(arr, n) {
@@ -491,6 +614,10 @@
           var el = document.getElementById(id);
           if (el) { el.textContent = val; }
         }
+        function setTitle(id, val) {
+          var el = document.getElementById(id);
+          if (el) { el.title = val; }
+        }
         function setHtml(id, val) {
           var el = document.getElementById(id);
           if (el) { el.innerHTML = val; }
@@ -528,6 +655,46 @@
           if (el) { el.addEventListener(type, fn); }
         }
 
+        /* ---------- webcam modal ---------- */
+        var currentCam = "";
+        function openCams(name, bust) {
+          currentCam = name || "";
+          var back = document.getElementById("cam-modal-back");
+          if (!back) { return; }
+          setTxt("cam-title", name);
+          var more = document.getElementById("cam-more");
+          if (more) { more.href = "https://duckduckgo.com/?q=" + encodeURIComponent(name + " station ski webcam"); }
+          var body = document.getElementById("cam-body");
+          if (body) {
+            var urls = WC[name] || [];
+            var b = bust ? "?fsr=" + Date.now() : "";
+            var html = "";
+            var i;
+            if (urls.length) {
+              html += '<p class="cam-note">' + escapeHtml(t("camNote")) + "</p>";
+              for (i = 0; i < urls.length; i++) {
+                html += '<img class="cam-img" src="' + escapeHtml(urls[i] + b) + '" alt="' + escapeHtml(name) + '" />';
+              }
+            } else {
+              html += '<p class="cam-note">' + escapeHtml(t("camNone")) + "</p>";
+            }
+            body.innerHTML = html;
+            if (body.querySelectorAll) {
+              var imgs = body.querySelectorAll("img.cam-img");
+              for (i = 0; i < imgs.length; i++) {
+                imgs[i].addEventListener("error", function () {
+                  if (this.classList) { this.classList.add("hide"); }
+                });
+              }
+            }
+          }
+          back.classList.add("open");
+        }
+        function closeCams() {
+          var back = document.getElementById("cam-modal-back");
+          if (back) { back.classList.remove("open"); }
+        }
+
         function setView(v) {
           view = v;
           var g = document.getElementById("grid");
@@ -548,9 +715,11 @@
           if (outline && !outline.firstChild) { outline.innerHTML = francePathsSvg(); }
           var html = "";
           RESORTS.forEach(function (r) {
+            if (favOnly && !favs[r.n]) { return; }
             var m = metric(r);
             var d = (m && typeof m.depth === "number") ? m.depth : null;
-            html += '<circle class="dot" cx="' + mapX(r.lo).toFixed(1) + '" cy="' + mapY(r.la).toFixed(1) +
+            var ring = favs[r.n] ? ' style="stroke:#f5b301;stroke-width:2.5"' : "";
+            html += '<circle class="dot"' + ring + ' cx="' + mapX(r.lo).toFixed(1) + '" cy="' + mapY(r.la).toFixed(1) +
               '" r="' + dotR(d).toFixed(1) + '" fill="' + depthColor(d) +
               '" data-n="' + escapeHtml(r.n) + '"><title>' + escapeHtml(r.n) +
               (typeof d === "number" ? " · " + d + " cm" : "") + "</title></circle>";
@@ -589,6 +758,12 @@
           setTxt("view-cards", t("cards"));
           setTxt("view-map", t("map"));
           setTxt("map-hint", t("mapHint"));
+          setTxt("cam-refresh", t("camRefresh"));
+          setTxt("cam-more", t("camMore"));
+          setTxt("t-favlegend", t("favLegend"));
+          setTitle("zoom-in", t("zoomIn"));
+          setTitle("zoom-out", t("zoomOut"));
+          setTitle("zoom-reset", t("zoomReset"));
           populateRegionSelect();
           document.documentElement.lang = LANG;
         }
@@ -628,7 +803,7 @@
                 '<div class="stat">' + escapeHtml(t("fresh")) + "<b>" + (m ? fmt(m.fresh, " cm", true) : "…") + "</b></div>" +
                 '<div class="stat">' + escapeHtml(t("forecast")) + "<b>" + (m ? fmt(m.forecast, " cm", true) : "…") + "</b></div>" +
               "</div>" +
-              '<a class="cam" href="https://duckduckgo.com/?q=' + encodeURIComponent(r.n + " station ski webcam") + '" target="_blank" rel="noopener">📷 ' + escapeHtml(t("cams")) + "</a>" +
+              '<button class="cam-btn" type="button" data-cams="' + escapeHtml(r.n) + '">📷 ' + escapeHtml(t("cams")) + "</button>" +
             "</div>"
           );
         }
@@ -704,7 +879,64 @@
         });
         onId("view-cards", "click", function () { setView("cards"); });
         onId("view-map", "click", function () { setView("map"); });
+        onId("zoom-in", "click", function () { zoomAtPoint(null, 1 / 1.3); });
+        onId("zoom-out", "click", function () { zoomAtPoint(null, 1.3); });
+        onId("zoom-reset", "click", function () {
+          VB = { x: 0, y: 0, w: MAP_W, h: MAP_H };
+          applyViewBox();
+        });
+        (function () {
+          var mapWheel = document.getElementById("map");
+          if (mapWheel && mapWheel.addEventListener) {
+            mapWheel.addEventListener("wheel", function (ev) {
+              ev.preventDefault();
+              zoomAtPoint(ev, ev.deltaY < 0 ? 1 / 1.18 : 1.18);
+            }, { passive: false });
+          }
+        })();
+
+        /* map drag / pinch (pointer events) */
+        var mapPtrs = {};
+        var mapDragged = false;
+        onId("map", "pointerdown", function (ev) {
+          mapPtrs[ev.pointerId] = { x: ev.clientX, y: ev.clientY, sx: ev.clientX, sy: ev.clientY };
+          mapDragged = false;
+        });
+        onId("map", "pointermove", function (ev) {
+          if (!mapPtrs[ev.pointerId]) { return; }
+          var svg = document.getElementById("map");
+          var r = svg ? svg.getBoundingClientRect() : null;
+          if (!r) { return; }
+          var ids = Object.keys(mapPtrs);
+          if (ids.length === 1) {
+            var p = mapPtrs[ev.pointerId];
+            var dx = (ev.clientX - p.x) / r.width * VB.w;
+            var dy = (ev.clientY - p.y) / r.height * VB.h;
+            mapPtrs[ev.pointerId] = { x: ev.clientX, y: ev.clientY, sx: p.sx, sy: p.sy };
+            VB.x -= dx;
+            VB.y -= dy;
+            clampVB();
+            applyViewBox();
+            if (Math.abs(ev.clientX - p.sx) + Math.abs(ev.clientY - p.sy) > 6) { mapDragged = true; }
+          } else if (ids.length >= 2) {
+            var a = mapPtrs[ids[0]];
+            var bref = mapPtrs[ids[1]];
+            var prevD = Math.sqrt((a.x - bref.x) * (a.x - bref.x) + (a.y - bref.y) * (a.y - bref.y)) || 1;
+            mapPtrs[ev.pointerId] = { x: ev.clientX, y: ev.clientY, sx: mapPtrs[ev.pointerId].sx, sy: mapPtrs[ev.pointerId].sy };
+            var n1 = mapPtrs[ids[0]];
+            var n2 = mapPtrs[ids[1]];
+            var newD = Math.sqrt((n1.x - n2.x) * (n1.x - n2.x) + (n1.y - n2.y) * (n1.y - n2.y)) || 1;
+            var mid = { clientX: (n1.x + n2.x) / 2, clientY: (n1.y + n2.y) / 2 };
+            zoomAtPoint(mid, prevD / newD);
+            mapDragged = true;
+          }
+        });
+        function mapEndPtr(ev) { delete mapPtrs[ev.pointerId]; }
+        onId("map", "pointerup", mapEndPtr);
+        onId("map", "pointercancel", mapEndPtr);
+
         onId("map", "click", function (ev) {
+          if (mapDragged) { mapDragged = false; return; }
           var n = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-n") : null;
           if (!n) { return; }
           setView("cards");
@@ -720,21 +952,37 @@
           setTimeout(function () { card.classList.remove("flash"); }, 1600);
         });
         grid.addEventListener("click", function (ev) {
+          var camBtn = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-cams") : null;
+          if (camBtn) { openCams(camBtn, false); return; }
           var btn = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-fav") : null;
           if (!btn) { return; }
           if (favs[btn]) { delete favs[btn]; } else { favs[btn] = true; }
           storeSet("fsr-fav", JSON.stringify(Object.keys(favs)));
           render();
         });
+        onId("cam-close", "click", closeCams);
+        onId("cam-refresh", "click", function () {
+          if (currentCam) { openCams(currentCam, true); }
+        });
+        var modalBack = document.getElementById("cam-modal-back");
+        if (modalBack) {
+          modalBack.addEventListener("click", function (ev) {
+            if (ev.target === modalBack) { closeCams(); }
+          });
+        }
+        document.addEventListener("keydown", function (ev) {
+          if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); }
+        });
         document.addEventListener("visibilitychange", function () {
           if (!document.hidden && mode === "demo") { loadLive(); }
         });
 
         /* ---------- go ---------- */
+        applyViewBox();
         render();
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="6hf1cq9XuBFZl3Ir0+mn9w==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="ut5i3qUMH/FFDBpQVk0TTg==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
