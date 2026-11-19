@@ -101,6 +101,7 @@
     <main class="wrap">
       <div class="notice demo" id="demo-note"></div>
       <div class="notice error" id="err-note"></div>
+      <div class="notice demo" id="slow-note"></div>
       <div class="grid" id="grid"></div>
       <p class="footer" id="t-footer"></p>
     </main>
@@ -217,7 +218,7 @@
           fr: {
             title: "❄️ Bulletin Neige France",
             sub: "Neige au sol, neige fraîche et prévisions pour les stations de ski françaises. Données en direct, mises à jour à chaque ouverture.",
-            search: "Rechercher une station…",
+            search: "Rechercher une station (ex : Chamonix, Méribel…)",
             allregions: "Toutes les régions",
             sortDepth: "Trier : neige au sol",
             sortFresh: "Trier : neige fraîche 24 h",
@@ -236,6 +237,7 @@
             empty: "Aucune station ne correspond.",
             demoNote: "⚠️ Données en direct indisponibles : valeurs de démonstration affichées. Si le fichier a été ouvert depuis le disque (l'adresse commence par file://), votre navigateur bloque probablement les requêtes météo. Hébergez la page en ligne (GitHub Pages, Netlify…) ou servez-la en local : elle fonctionnera alors partout, sans rien installer d'autre.",
             errNote: "⚠️ Impossible de récupérer les données de certaines stations. Cliquez sur « Actualiser » pour réessayer.",
+            slowNote: "⏳ Le chargement des données est anormalement long : votre réseau ou votre navigateur bloque probablement l'accès à open-meteo.com. Testez la page sur votre téléphone en 4G/5G pour vérifier, ou essayez après avoir désactivé vos extensions de navigateur.",
             footer: 'Données neige : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (modèles météo, CC BY 4.0). Les valeurs sont des estimations indicatives : vérifiez toujours le bulletin officiel de la station avant de partir.',
             statUnit: "stations",
             na: "n/d"
@@ -243,7 +245,7 @@
           en: {
             title: "❄️ France Snow Report",
             sub: "Snow depth, fresh snow and forecast for French ski resorts. Live data, refreshed every time you open the page.",
-            search: "Search a resort…",
+            search: "Search a resort (e.g. Chamonix, Méribel…)",
             allregions: "All regions",
             sortDepth: "Sort: snow depth",
             sortFresh: "Sort: fresh snow 24 h",
@@ -262,6 +264,7 @@
             empty: "No resort matches your filters.",
             demoNote: "⚠️ Live snow data could not be loaded, so demo values are shown. If you opened this file directly from disk (the address starts with file://), your browser is probably blocking weather requests. Host the page online (GitHub Pages, Netlify…) or serve it locally: it will then work everywhere, with nothing else to install.",
             errNote: "⚠️ Could not fetch data for some resorts. Click Refresh to retry.",
+            slowNote: "⏳ Loading is taking unusually long: your network or browser is probably blocking access to open-meteo.com. Try the page on your phone using 4G/5G to check, or retry after disabling your browser extensions.",
             footer: 'Snow data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (weather models, CC BY 4.0). Values are indicative estimates: always check the resort official snow report before you go.',
             statUnit: "resorts",
             na: "n/a"
@@ -288,7 +291,6 @@
         var DATA = {};      /* per resort metrics */
         var mode = "loading"; /* loading | live | partial | demo */
         var lastUpdate = null;
-        var lastErr = "";
         var lastErr = "";
 
         /* ---------- deterministic demo data ---------- */
@@ -320,7 +322,10 @@
             "&hourly=snow_depth" +
             "&daily=snowfall_sum" +
             "&past_days=1&forecast_days=3&timezone=Europe%2FParis";
-          return fetch(url).then(function (res) {
+          var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+          var abortTimer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 30000) : null;
+          var p = ctrl ? fetch(url, { signal: ctrl.signal }) : fetch(url);
+          p = p.then(function (res) {
             if (!res.ok) { throw new Error("HTTP " + res.status); }
             return res.json();
           }).then(function (data) {
@@ -360,18 +365,36 @@
             });
             return true;
           });
+          if (abortTimer) {
+            p = p.then(
+              function (v) { clearTimeout(abortTimer); return v; },
+              function (e) { clearTimeout(abortTimer); throw e; }
+            );
+          }
+          return p;
         }
 
         function loadLive() {
           mode = "loading";
+          lastErr = "";
           renderMeta();
+          var slowEl = document.getElementById("slow-note");
+          if (slowEl) { slowEl.classList.remove("show"); }
           var chunks = chunk(RESORTS, 20);
+          var slowTimer = setTimeout(function () {
+            if (mode === "loading" && slowEl) {
+              slowEl.textContent = t("slowNote") + (lastErr ? " (" + lastErr + ")" : "");
+              slowEl.classList.add("show");
+            }
+          }, 8000);
           return Promise.all(chunks.map(function (c) {
             return fetchChunk(c).catch(function (e) {
               lastErr = (e && e.message) ? e.message : String(e);
               return false;
             });
           })).then(function (results) {
+            clearTimeout(slowTimer);
+            if (slowEl) { slowEl.classList.remove("show"); }
             var ok = results.filter(Boolean).length;
             if (ok === chunks.length) { mode = "live"; }
             else if (ok > 0) { mode = "partial"; }
@@ -383,6 +406,14 @@
 
         /* ---------- UI helpers ---------- */
         function t(k) { return T[LANG][k]; }
+        function setTxt(id, val) {
+          var el = document.getElementById(id);
+          if (el) { el.textContent = val; }
+        }
+        function setHtml(id, val) {
+          var el = document.getElementById(id);
+          if (el) { el.innerHTML = val; }
+        }
         function escapeHtml(s) {
           return String(s).replace(/[&<>"']/g, function (c) {
             return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
@@ -413,7 +444,7 @@
         function populateRegionSelect() {
           var current = elRegion.value;
           var seen = {};
-          var html = '<option value="all">' + t("allregions") + "</option>";
+          var html = '<option value="all" id="t-allregions">' + t("allregions") + "</option>";
           RESORTS.forEach(function (r) {
             if (seen[r.r]) { return; }
             seen[r.r] = true;
@@ -424,21 +455,20 @@
         }
 
         function applyStaticText() {
-          document.getElementById("t-title").textContent = t("title");
-          document.getElementById("t-sub").textContent = t("sub");
-          document.getElementById("t-allregions").textContent = t("allregions");
-          document.getElementById("o-depth").textContent = t("sortDepth");
-          document.getElementById("o-fresh").textContent = t("sortFresh");
-          document.getElementById("o-forecast").textContent = t("sortForecast");
-          document.getElementById("o-name").textContent = t("sortName");
+          setTxt("t-title", t("title"));
+          setTxt("t-sub", t("sub"));
+          setTxt("o-depth", t("sortDepth"));
+          setTxt("o-fresh", t("sortFresh"));
+          setTxt("o-forecast", t("sortForecast"));
+          setTxt("o-name", t("sortName"));
           elSearch.placeholder = t("search");
           elFav.textContent = t("fav");
           elRefresh.textContent = t("refresh");
           elLang.textContent = t("langBtn");
           elFav.classList.toggle("active", favOnly);
-          document.getElementById("t-footer").innerHTML = t("footer");
-          document.getElementById("demo-note").textContent = t("demoNote");
-          document.getElementById("err-note").textContent = t("errNote");
+          setHtml("t-footer", t("footer"));
+          setTxt("demo-note", t("demoNote"));
+          setTxt("err-note", t("errNote"));
           populateRegionSelect();
           document.documentElement.lang = LANG;
         }
@@ -483,12 +513,15 @@
         function render() {
           applyStaticText();
           renderMeta();
-          document.getElementById("demo-note").classList.toggle("show", mode === "demo");
-          document.getElementById("err-note").classList.toggle("show", mode === "partial");
-          document.getElementById("demo-note").textContent = t("demoNote") + (lastErr ? " (" + lastErr + ")" : "");
-          document.getElementById("err-note").textContent = t("errNote") + (lastErr ? " (" + lastErr + ")" : "");
-          document.getElementById("demo-note").textContent = t("demoNote") + (lastErr ? " (" + lastErr + ")" : "");
-          document.getElementById("err-note").textContent = t("errNote") + (lastErr ? " (" + lastErr + ")" : "");
+          function notice(id, show, text) {
+            var el = document.getElementById(id);
+            if (el) {
+              el.classList.toggle("show", show);
+              el.textContent = text;
+            }
+          }
+          notice("demo-note", mode === "demo", t("demoNote") + (lastErr ? " (" + lastErr + ")" : ""));
+          notice("err-note", mode === "partial", t("errNote") + (lastErr ? " (" + lastErr + ")" : ""));
 
           var q = elSearch.value.trim().toLowerCase();
           var region = elRegion.value;
@@ -560,5 +593,6 @@
         loadLive();
       })();
     </script>
-  </body>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="GaLFiNc3TgKwwyoaMXAvHA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+</body>
 </html>
