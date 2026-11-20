@@ -13,7 +13,7 @@
     <meta property="og:image" content="https://francesnowreport.fr/icon-512.png" />
     <meta property="og:locale" content="fr_FR" />
     <link rel="manifest" href="manifest.json" />
-    <link rel="icon" type="image/jpeg" href="favicon.jpg" />
+    <link rel="icon" type="image/jpeg" href="logo.jpg" />
     <link rel="apple-touch-icon" href="icon-512.png" />
     <title>France Snow Report · Bulletin Neige France</title>
     <style>
@@ -74,8 +74,11 @@
         z-index: 999;
       }
       #don-toast.show { opacity: 1; visibility: visible; }
-      #radar-map { position: relative; width: 100%; aspect-ratio: 700 / 660; max-height: 60vh; margin: 4px 0 10px; border-radius: 10px; background: #dbe7f5; overflow: hidden; }
-      #radar-map svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      #site-logo { display: block; height: 46px; border-radius: 11px; margin: 0 auto 8px; box-shadow: 0 2px 10px rgba(34, 49, 78, 0.25); }
+      #radar-map { position: relative; width: 100%; aspect-ratio: 700 / 660; max-height: 60vh; margin: 4px 0 10px; border-radius: 10px; background: #dbe7f5; overflow: hidden; touch-action: none; cursor: grab; }
+      #radar-map svg { position: absolute; pointer-events: none; }
+      .radar-world { position: absolute; top: 0; left: 0; }
+      .radar-hill { position: absolute; }
       #radar-map .radar-tile { position: absolute; opacity: 0.85; }
       .radar-dot { fill: #12385f; stroke: #fff; stroke-width: 0.4; pointer-events: all; cursor: pointer; }
       .radar-land { fill: rgba(255, 255, 255, 0.42); stroke: #8ea3bf; stroke-width: 0.25; }
@@ -267,12 +270,13 @@
         .mt-leader { stroke: rgba(163,205,245,.55); }
         .dt-btn { background: rgba(122, 184, 238, .12); border-color: #3d5f8a; color: #c3dbf6; }
       }
-      @media (max-width: 560px) { h1 { font-size: 21px; } .card .stats { flex-direction: column; } }
+      @media (max-width: 560px) { h1 { font-size: 21px; } #site-logo { height: 36px; } .card .stats { flex-direction: column; } }
     </style>
   </head>
   <body>
     <header>
       <div class="wrap">
+        <img id="site-logo" src="logo.jpg" alt="" onerror="this.style.display='none'" />
         <h1 id="t-title"></h1>
         <p class="subtitle" id="t-sub"></p>
         <div class="toolbar">
@@ -373,6 +377,8 @@
             <button id="radar-prev" type="button">‹</button>
             <button id="radar-play" type="button">▶</button>
             <button id="radar-next" type="button">›</button>
+            <button id="radar-zin" type="button">+</button>
+            <button id="radar-zout" type="button">−</button>
             <span id="radar-time">–</span>
             <span id="radar-flag"></span>
           </div>
@@ -381,6 +387,7 @@
             <span><span class="radar-sw" style="background:#e75480;"></span><span id="radar-snow"></span></span>
             <span id="radar-by"></span>
             <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>
+            <span id="radar-rel"></span>
           </div>
         </div>
       </div>
@@ -582,6 +589,9 @@
             radarLoad: "Chargement du radar…",
             radarOff: "Radar momentanément indisponible. Réessayez plus tard.",
             radarBy: "Météo par",
+            radarRel: "· Relief : Esri",
+            radarZin: "Zoomer",
+            radarZout: "Dézoomer",
             cmpToggle: "Comparer",
             cmpBtn: "Comparer",
             cmpMax: "Maximum 3 stations",
@@ -677,6 +687,9 @@
             radarLoad: "Loading radar…",
             radarOff: "Radar temporarily unavailable. Try again later.",
             radarBy: "Weather by",
+            radarRel: "· Relief: Esri",
+            radarZin: "Zoom in",
+            radarZout: "Zoom out",
             cmpToggle: "Compare",
             cmpBtn: "Compare",
             cmpMax: "Maximum 3 resorts",
@@ -2055,6 +2068,9 @@
           setTxt("radar-rain", t("radarRain"));
           setTxt("radar-snow", t("radarSnow"));
           setTxt("radar-by", t("radarBy"));
+          setTxt("radar-rel", t("radarRel"));
+          setTitle("radar-zin", t("radarZin"));
+          setTitle("radar-zout", t("radarZout"));
           setTxt("gallery-title", "🖼 " + t("allcams"));
           setTxt("cmp-open", t("cmpOpen"));
           setTxt("dt-share", t("share"));
@@ -2443,85 +2459,110 @@
           }
         });
 
-        /* ---------- v24 : radar pluie/neige temps reel (donnees RainViewer) ---------- */
+        /* ---------- v25 : radar neige/pluie temps reel (RainViewer) + relief (Esri) + zoom + deplacement ---------- */
         var RADAR_API = "https://api.rainviewer.com/public/weather-maps.json";
         var RADAR_TTL = 10 * 60 * 1000;
+        var HILL_URL = "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/";
+        var RADAR_ZMIN = 6, RADAR_ZMAX = 9;
         var radarData = null;
         var radarTiles = null;
         var radarErrEl = null;
+        var radarWorldEl = null;
         var radarPos = 0;
         var radarTimer = null;
+        var radarView = null;
+        var radarDrag = null;
+        var radarMoved = false;
 
         function mercN(la) {
           var r = Math.PI / 180;
           return Math.log(Math.tan(Math.PI / 4 + la * r / 2));
         }
-        function radarX(lo) { return (lo - LON_MIN) / (LON_MAX - LON_MIN); }
-        function radarY(la) {
-          var top = mercN(LAT_MAX), bot = mercN(LAT_MIN);
-          return (top - mercN(la)) / (top - bot);
-        }
-        function polyPathMerc(pts) {
+        function wT(z) { return 256 * Math.pow(2, z); }
+        function wPx(lo, z) { return (lo + 180) / 360 * wT(z); }
+        function wPy(la, z) { return (0.5 - mercN(la) / (2 * Math.PI)) * wT(z); }
+        function polyWorld(pts, ox, oy, z) {
           var d = "";
           for (var i = 0; i < pts.length; i++) {
-            d += (i === 0 ? "M" : " L") + (radarX(pts[i][0]) * 100).toFixed(2) + "," + (radarY(pts[i][1]) * 100).toFixed(2);
+            d += (i === 0 ? "M" : " L") + (wPx(pts[i][0], z) - ox).toFixed(1) + "," + (wPy(pts[i][1], z) - oy).toFixed(1);
           }
           return d + " Z";
         }
-        function tileLat(j, z) {
-          var n = Math.PI * (1 - 2 * j / Math.pow(2, z));
-          return Math.atan(Math.sinh(n)) * 180 / Math.PI;
+        function radarSize() {
+          var mEl = document.getElementById("radar-map");
+          var w = (mEl && mEl.clientWidth) || 700;
+          var h = (mEl && mEl.clientHeight) || 660;
+          return { w: Math.max(320, w), h: Math.max(320, h) };
         }
-        function radarBuildBase() {
+        function radarRender() {
           var mapEl = document.getElementById("radar-map");
-          if (!mapEl || radarTiles) { return; }
-          var z = 6, N = Math.pow(2, z);
-          var x0 = Math.max(0, Math.floor((LON_MIN + 180) / 360 * N));
-          var x1 = Math.min(N - 1, Math.floor((LON_MAX + 180) / 360 * N));
-          var y0 = Math.max(0, Math.floor((1 - mercN(LAT_MAX) / Math.PI) / 2 * N));
-          var y1 = Math.min(N - 1, Math.floor((1 - mercN(LAT_MIN) / Math.PI) / 2 * N));
+          if (!mapEl) { return; }
+          if (!radarView) {
+            radarView = { z: RADAR_ZMIN, cx: wPx((LON_MIN + LON_MAX) / 2, RADAR_ZMIN), cy: wPy((LAT_MIN + LAT_MAX) / 2, RADAR_ZMIN) };
+          }
+          var z = radarView.z;
+          var sz = radarSize();
+          var ox = radarView.cx - sz.w / 2, oy = radarView.cy - sz.h / 2;
+          var world = radarWorldEl;
+          if (!world || world.parentElement !== mapEl) {
+            world = document.createElement("div");
+            world.setAttribute("class", "radar-world");
+            mapEl.appendChild(world);
+            radarWorldEl = world;
+          }
+          while (world.firstChild) { world.removeChild(world.firstChild); }
           radarTiles = [];
+          var x0 = Math.floor(ox / 256), x1 = Math.floor((ox + sz.w) / 256);
+          var y0 = Math.floor(oy / 256), y1 = Math.floor((oy + sz.h) / 256);
           for (var tx = x0; tx <= x1; tx++) {
             for (var ty = y0; ty <= y1; ty++) {
-              var img = document.createElement("img");
-              img.setAttribute("class", "radar-tile");
-              var lo0 = tx / N * 360 - 180, lo1 = (tx + 1) / N * 360 - 180;
-              var la0 = tileLat(ty, z), la1 = tileLat(ty + 1, z);
-              var lft = radarX(lo0) * 100, rgt = radarX(lo1) * 100;
-              var tp = radarY(la0) * 100, bt = radarY(la1) * 100;
-              img.style.left = lft.toFixed(2) + "%";
-              img.style.width = (rgt - lft).toFixed(2) + "%";
-              img.style.top = tp.toFixed(2) + "%";
-              img.style.height = (bt - tp).toFixed(2) + "%";
-              mapEl.appendChild(img);
-              radarTiles.push({ img: img, tx: tx, ty: ty });
+              var lft = tx * 256 - ox, top = ty * 256 - oy;
+              var hill = document.createElement("img");
+              hill.setAttribute("class", "radar-hill");
+              hill.src = HILL_URL + z + "/" + ty + "/" + tx;
+              hill.style.left = lft + "px";
+              hill.style.top = top + "px";
+              hill.style.width = "256px";
+              hill.style.height = "256px";
+              world.appendChild(hill);
+              var rain = document.createElement("img");
+              rain.setAttribute("class", "radar-tile");
+              rain.style.left = lft + "px";
+              rain.style.top = top + "px";
+              rain.style.width = "256px";
+              rain.style.height = "256px";
+              world.appendChild(rain);
+              radarTiles.push({ rain: rain, tx: tx, ty: ty });
             }
           }
-          var svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none">'
-            + '<path class="radar-land" d="' + polyPathMerc(FRANCE) + '"></path>'
-            + '<path class="radar-land" d="' + polyPathMerc(CORSICA) + '"></path>';
+          var svg = '<svg viewBox="0 0 ' + sz.w + " " + sz.h + '" style="left:0;top:0;width:' + sz.w + "px;height:" + sz.h + 'px;">'
+            + '<path class="radar-land" d="' + polyWorld(FRANCE, ox, oy, z) + '"></path>'
+            + '<path class="radar-land" d="' + polyWorld(CORSICA, ox, oy, z) + '"></path>';
           RESORTS.forEach(function (r) {
-            svg += '<circle class="radar-dot" cx="' + (radarX(r.lo) * 100).toFixed(2)
-              + '" cy="' + (radarY(r.la) * 100).toFixed(2)
-              + '" r="0.7" data-n="' + escapeHtml(r.n) + '"></circle>';
+            svg += '<circle class="radar-dot" cx="' + (wPx(r.lo, z) - ox).toFixed(1)
+              + '" cy="' + (wPy(r.la, z) - oy).toFixed(1)
+              + '" r="4" data-n="' + escapeHtml(r.n) + '"></circle>';
           });
           svg += "</svg>";
-          var err2 = document.createElement("div");
-          err2.setAttribute("id", "radar-err");
-          if (typeof mapEl.insertAdjacentHTML === "function") { mapEl.insertAdjacentHTML("beforeend", svg); }
-          else { mapEl.innerHTML = svg; }
-          mapEl.appendChild(err2);
-          radarErrEl = err2;
+          if (typeof world.insertAdjacentHTML === "function") { world.insertAdjacentHTML("beforeend", svg); }
+          else { world.innerHTML = svg; }
+          if (!radarErrEl || radarErrEl.parentElement !== mapEl) {
+            var err2 = document.createElement("div");
+            err2.setAttribute("id", "radar-err");
+            mapEl.appendChild(err2);
+            radarErrEl = err2;
+          }
         }
         function radarShow(pos) {
-          if (!radarData || !radarData.frames.length) { return; }
+          if (!radarData || !radarData.frames.length || !radarTiles || !radarTiles.length) { return; }
           var n = radarData.frames.length;
           pos = ((pos % n) + n) % n;
           radarPos = pos;
           var f = radarData.frames[pos];
+          var z = radarView ? radarView.z : RADAR_ZMIN;
           for (var i = 0; i < radarTiles.length; i++) {
             var tl = radarTiles[i];
-            tl.img.src = radarData.host + f.path + "/256/6/" + tl.tx + "/" + tl.ty + "/2/1_1.png";
+            tl.rain.src = radarData.host + f.path + "/256/" + z + "/" + tl.tx + "/" + tl.ty + "/2/1_1.png";
           }
           var tEl = document.getElementById("radar-time");
           if (tEl) {
@@ -2553,8 +2594,20 @@
           if (b) { b.textContent = "\u23f8"; }
           radarTick();
         }
+        function radarZoom(dz) {
+          if (!radarView) { radarRender(); }
+          if (!radarView) { return; }
+          var nz = Math.max(RADAR_ZMIN, Math.min(RADAR_ZMAX, radarView.z + dz));
+          if (nz === radarView.z) { return; }
+          var k = wT(nz) / wT(radarView.z);
+          radarView.cx *= k;
+          radarView.cy *= k;
+          radarView.z = nz;
+          radarRender();
+          if (radarData && !radarTimer) { radarShow(radarPos); }
+        }
         function radarLoad() {
-          radarBuildBase();
+          radarRender();
           if (radarData) {
             if (radarErrEl) { radarErrEl.classList.remove("show"); }
             if (!radarTimer) { radarShow(radarPos); }
@@ -2595,9 +2648,44 @@
         onId("radar-prev", "click", function () { radarStop(); radarShow(radarPos - 1); });
         onId("radar-next", "click", function () { radarStop(); radarShow(radarPos + 1); });
         onId("radar-play", "click", radarPlay);
+        onId("radar-zin", "click", function () { radarZoom(1); });
+        onId("radar-zout", "click", function () { radarZoom(-1); });
         onId("radar-map", "click", function (ev) {
+          if (radarMoved) { return; }
           var nm = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-n") : null;
           if (nm) { closeRadar(); openDetail(nm); }
+        });
+        onId("radar-map", "pointerdown", function (ev) {
+          radarDrag = { x: (ev && ev.clientX) || 0, y: (ev && ev.clientY) || 0, dx: 0, dy: 0, moved: false };
+          radarMoved = false;
+        });
+        onId("radar-map", "pointermove", function (ev) {
+          if (!radarDrag || !radarWorldEl) { return; }
+          var dx = (ev && ev.clientX || 0) - radarDrag.x;
+          var dy = (ev && ev.clientY || 0) - radarDrag.y;
+          if (Math.abs(dx) + Math.abs(dy) > 6) { radarDrag.moved = true; radarMoved = true; }
+          radarDrag.dx = dx;
+          radarDrag.dy = dy;
+          radarWorldEl.style.transform = "translate(" + dx + "px," + dy + "px)";
+        });
+        onId("radar-map", "pointerup", function () {
+          var d = radarDrag;
+          radarDrag = null;
+          if (!d || !d.moved) { return; }
+          if (radarWorldEl) { radarWorldEl.style.transform = ""; }
+          if (!radarView) { return; }
+          radarView.cx -= d.dx;
+          radarView.cy -= d.dy;
+          radarRender();
+          if (radarData && !radarTimer) { radarShow(radarPos); }
+        });
+        onId("radar-map", "pointerleave", function () {
+          if (radarDrag && radarWorldEl) { radarWorldEl.style.transform = ""; }
+          radarDrag = null;
+        });
+        onId("radar-map", "wheel", function (ev) {
+          if (ev && ev.preventDefault) { ev.preventDefault(); }
+          radarZoom(ev && ev.deltaY < 0 ? 1 : -1);
         });
 
         onId("dt-alert", "click", function () {
@@ -2706,6 +2794,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="e54HtHX+BkXfSoXUFkYQiw==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="SVgv0HuFW+K+krnkChuBJg==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
