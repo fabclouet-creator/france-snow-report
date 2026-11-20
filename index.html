@@ -49,6 +49,12 @@
       .notice.error { background: #fdeaea; border: 1px solid #e5a1a1; color: #7d1f1f; }
       .notice.alert { background: #eaf6ff; border: 1px solid #8ecbff; color: #0a4d7a; }
       .hide { display: none !important; }
+      .fb-chips { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+      .fb-chip { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 20px; padding: 8px 14px; cursor: pointer; font: inherit; }
+      .fb-chip.sel { border-color: var(--snow); background: var(--snow); color: #fff; }
+      .fb-body textarea { width: 100%; min-height: 110px; resize: vertical; border: 1px solid var(--line); border-radius: 10px; padding: 10px; font: inherit; background: var(--card); color: var(--ink); }
+      .fb-hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+      .fb-gh-link { color: var(--snow-deep); }
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
       .card {
         background: var(--card); border: 1px solid var(--line); border-radius: 14px;
@@ -240,6 +246,7 @@
           <button id="nearme"></button>
           <button id="cmp-toggle"></button>
           <button id="cams-all"></button>
+          <button id="feedback-btn"></button>
           <button id="don-btn"></button>
           <button id="install-btn" class="hide"></button>
           <button id="refresh"></button>
@@ -306,6 +313,24 @@
           <div class="modal-actions dt-actions">
             <button type="button" id="dt-share">🔗</button>
             <button type="button" id="dt-alert"></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-back" id="feedback-back">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="close-x" id="feedback-close" type="button">✕</button>
+          <h2 id="feedback-title"></h2>
+          <div class="dt-body fb-body">
+            <div class="fb-chips">
+              <button type="button" id="fb-bug" class="fb-chip"></button>
+              <button type="button" id="fb-idea" class="fb-chip sel"></button>
+            </div>
+            <textarea id="feedback-txt" rows="5"></textarea>
+            <div class="modal-actions dt-actions">
+              <button type="button" id="fb-send"></button>
+              <a id="fb-gh" class="fb-gh-link" target="_blank" rel="noopener"></a>
+            </div>
+            <p class="fb-hint" id="fb-hint"></p>
           </div>
         </div>
       </div>
@@ -497,6 +522,14 @@
             alertBanner: "Alerte poudreuse",
             install: "📱 Installer l'app",
             installOk: "✅ Application installée",
+            feedback: "Idée / Bug",
+            fbTitle: "Une idée ? Un bug ?",
+            fbBug: "🐞 Un bug",
+            fbIdea: "💡 Une idée",
+            fbSend: "✉️ Envoyer",
+            fbGh: "🗂 Ou sur GitHub",
+            fbHint: "Votre application email va s'ouvrir avec le message prêt à envoyer.",
+            fbSoon: "📬 Un formulaire email dédié arrive bientôt. En attendant, écrivez sur GitHub 👇",
             zoomIn: "Zoomer",
             zoomOut: "Dézoomer",
             zoomReset: "Vue initiale",
@@ -575,6 +608,14 @@
             alertBanner: "Powder alert",
             install: "📱 Install app",
             installOk: "✅ App installed",
+            feedback: "Idea / Bug",
+            fbTitle: "An idea? A bug?",
+            fbBug: "🐞 A bug",
+            fbIdea: "💡 An idea",
+            fbSend: "✉️ Send",
+            fbGh: "🗂 Or on GitHub",
+            fbHint: "Your email app will open with the message ready to send.",
+            fbSoon: "📬 A dedicated email form is coming soon. Meanwhile, write on GitHub 👇",
             zoomIn: "Zoom in",
             zoomOut: "Zoom out",
             zoomReset: "Reset view",
@@ -607,6 +648,8 @@
           JSON.parse(favRaw).forEach(function (x) { favs[x] = true; });
         } catch (e) { favs = {}; }
 
+        var FB_MAIL = "contact@francesnowreport.fr";  /* adresse dediee qui recoit les idees/bugs */
+        var fbKind = "idea";                  /* idea | bug */
         var DON_URL = "";   /* Lien de don (PayPal.me, Ko-fi...). Vide = bouton masque. */
         var ALERT_CM = 20;  /* seuil de l'alerte poudreuse, en cm prevus */
         var AL = {};        /* stations avec alerte active { nom: true } */
@@ -1924,6 +1967,13 @@
           setTxt("gallery-title", "🖼 " + t("allcams"));
           setTxt("cmp-open", t("cmpOpen"));
           setTxt("dt-share", t("share"));
+          setTxt("feedback-btn", "💬 " + t("feedback"));
+          setTxt("feedback-title", t("fbTitle"));
+          setTxt("fb-bug", t("fbBug"));
+          setTxt("fb-idea", t("fbIdea"));
+          setTxt("fb-send", t("fbSend"));
+          setTxt("fb-gh", t("fbGh"));
+          fbMode();
           setTxt("install-btn", t("install"));
           var ib = document.getElementById("install-btn");
           if (ib) { ib.classList.toggle("hide", !installEvt); }
@@ -2259,6 +2309,52 @@
             }, function () {});
           }
         });
+        /* ---------- v21 : formulaire idees & bugs ---------- */
+        function fbSel() {
+          var b = document.getElementById("fb-bug");
+          var i = document.getElementById("fb-idea");
+          if (b) { b.classList.toggle("sel", fbKind === "bug"); }
+          if (i) { i.classList.toggle("sel", fbKind === "idea"); }
+        }
+        function fbMode() {
+          var has = !!FB_MAIL;
+          var ids = ["fb-bug", "fb-idea", "feedback-txt", "fb-send"];
+          for (var i = 0; i < ids.length; i++) {
+            var e = document.getElementById(ids[i]);
+            if (e) { e.classList.toggle("hide", !has); }
+          }
+          var hint = document.getElementById("fb-hint");
+          if (hint) { hint.textContent = has ? t("fbHint") : t("fbSoon"); }
+        }
+        function openFeedback() {
+          var back = document.getElementById("feedback-back");
+          if (!back) { return; }
+          fbMode();
+          fbSel();
+          var gh = document.getElementById("fb-gh");
+          if (gh) { gh.href = "https://github.com/fabclouet-creator/france-snow-report/issues/new"; }
+          back.classList.add("open");
+        }
+        function closeFeedback() {
+          var back = document.getElementById("feedback-back");
+          if (back) { back.classList.remove("open"); }
+        }
+        onId("feedback-btn", "click", openFeedback);
+        onId("feedback-close", "click", closeFeedback);
+        onId("fb-bug", "click", function () { fbKind = "bug"; fbSel(); });
+        onId("fb-idea", "click", function () { fbKind = "idea"; fbSel(); });
+        onId("fb-send", "click", function () {
+          var txt = "";
+          var ta = document.getElementById("feedback-txt");
+          if (ta) { txt = String(ta.value || "").trim(); }
+          var subject = "[France Snow Report] " + ((fbKind === "bug") ? t("fbBug") : t("fbIdea"));
+          var body = txt + "\n\n— envoyé depuis France Snow Report (" + LANG + ")";
+          var url = "mailto:" + FB_MAIL + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+          if (typeof window !== "undefined" && window.location && window.location.href !== undefined) {
+            try { window.location.href = url; } catch (e) {}
+          }
+        });
+
         onId("dt-alert", "click", function () {
           if (!dtName) { return; }
           if (AL[dtName]) { delete AL[dtName]; }
@@ -2303,16 +2399,16 @@
             if (btn) { btn.title = t("nearmeErr"); }
           });
         });
-        ["gallery-back", "detail-back", "cmp-back"].forEach(function (idz) {
+        ["gallery-back", "detail-back", "cmp-back", "feedback-back"].forEach(function (idz) {
           var elz = document.getElementById(idz);
           if (elz) {
             elz.addEventListener("click", function (ev) {
-              if (ev.target === elz) { closeGallery(); closeDetail(); closeCompare(); }
+              if (ev.target === elz) { closeGallery(); closeDetail(); closeCompare(); closeFeedback(); }
             });
           }
         });
         document.addEventListener("keydown", function (ev) {
-          if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); closeGallery(); closeDetail(); closeCompare(); }
+          if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); closeGallery(); closeDetail(); closeCompare(); closeFeedback(); }
         });
         document.addEventListener("visibilitychange", function () {
           var cb = document.getElementById("cam-modal-back");
@@ -2356,6 +2452,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="sJAOxYuWrmAnoO9Id10i9A==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="FRCgVFUrthdxCGTR++eP4Q==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
