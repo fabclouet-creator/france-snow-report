@@ -1,0 +1,16 @@
+{
+  "name": "France Snow Report",
+  "short_name": "Snow FR",
+  "description": "Bulletin neige des 77 stations de ski de France : enneigement, poudreuse, webcams et dates d'ouverture.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef3fa",
+  "theme_color": "#0a3060",
+  "lang": "fr",
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
