@@ -73,6 +73,20 @@
         z-index: 999;
       }
       #don-toast.show { opacity: 1; visibility: visible; }
+      #radar-map { position: relative; width: 100%; aspect-ratio: 700 / 660; max-height: 60vh; margin: 4px 0 10px; border-radius: 10px; background: #dbe7f5; overflow: hidden; }
+      #radar-map svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+      #radar-map .radar-tile { position: absolute; opacity: 0.85; }
+      .radar-dot { fill: #12385f; stroke: #fff; stroke-width: 0.4; pointer-events: all; cursor: pointer; }
+      .radar-land { fill: rgba(255, 255, 255, 0.42); stroke: #8ea3bf; stroke-width: 0.25; }
+      .radar-ctl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 10px; font-size: 13.5px; }
+      .radar-ctl button { font: inherit; font-size: 14px; width: 34px; height: 30px; padding: 0; border-radius: 8px; background: #f2f7ff; border: 1px solid var(--line); color: var(--accent); cursor: pointer; }
+      #radar-time { font-weight: 600; min-width: 62px; }
+      #radar-flag { display: none; font-size: 12px; background: #eaf6ff; color: #0a4d7a; border: 1px solid #8ecbff; border-radius: 999px; padding: 2px 9px; }
+      #radar-flag.show { display: inline-block; }
+      .radar-legend { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); flex-wrap: wrap; align-items: center; }
+      .radar-sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+      #radar-err { position: absolute; inset: 0; z-index: 5; display: none; align-items: center; justify-content: center; text-align: center; font-size: 14px; color: var(--ink); padding: 20px; background: rgba(219, 231, 245, 0.82); }
+      #radar-err.show { display: flex; }
       .hide { display: none !important; }
       .fb-chips { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
       .fb-chip { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 20px; padding: 8px 14px; cursor: pointer; font: inherit; }
@@ -221,6 +235,12 @@
         .notice.error { background: #45201f; border-color: #a05b5b; color: #ffa5a5; }
         .notice.alert { background: #123047; border-color: #2b6f9e; color: #a9d8ff; }
         .gauge { background: #22314e; }
+        #radar-map { background: #0e1c33; }
+        .radar-ctl button { background: #16233a; border-color: var(--line); }
+        .radar-land { fill: rgba(14, 28, 51, 0.55); stroke: #3a5378; }
+        .radar-dot { fill: #a9cdf5; stroke: #061a35; }
+        #radar-flag { background: #123047; color: #a9d8ff; border-color: #2b6f9e; }
+        #radar-err { background: rgba(12, 21, 36, 0.88); }
         .alt-row, .stat { background: #1d2c47; }
         .alt-row b { color: #a9cdf5; }
         .cb { background: rgba(125, 185, 234, .10); }
@@ -271,6 +291,7 @@
           <button id="nearme"></button>
           <button id="cmp-toggle"></button>
           <button id="cams-all"></button>
+          <button id="radar-btn"></button>
           <button id="feedback-btn"></button>
           <button id="don-btn"></button>
           <button id="install-btn" class="hide"></button>
@@ -339,6 +360,26 @@
           <div class="modal-actions dt-actions">
             <button type="button" id="dt-share">🔗</button>
             <button type="button" id="dt-alert"></button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-back" id="radar-back">
+        <div class="modal" role="dialog" aria-modal="true">
+          <button class="close-x" id="radar-close" type="button">✕</button>
+          <h2 id="radar-title"></h2>
+          <div id="radar-map"></div>
+          <div class="radar-ctl">
+            <button id="radar-prev" type="button">‹</button>
+            <button id="radar-play" type="button">▶</button>
+            <button id="radar-next" type="button">›</button>
+            <span id="radar-time">–</span>
+            <span id="radar-flag"></span>
+          </div>
+          <div class="radar-legend">
+            <span><span class="radar-sw" style="background:#4f9adb;"></span><span id="radar-rain"></span></span>
+            <span><span class="radar-sw" style="background:#e75480;"></span><span id="radar-snow"></span></span>
+            <span id="radar-by"></span>
+            <a href="https://www.rainviewer.com/" target="_blank" rel="noopener">RainViewer</a>
           </div>
         </div>
       </div>
@@ -532,6 +573,14 @@
             nearmeTip: "Trier les stations par distance de votre position",
             nearmeErr: "Position refusée ou indisponible",
             allcams: "Toutes les webcams",
+            radarBtn: "Radar",
+            radarTitle: "Radar neige & pluie — France",
+            radarRain: "Pluie",
+            radarSnow: "Neige",
+            radarSoon: "prévu",
+            radarLoad: "Chargement du radar…",
+            radarOff: "Radar momentanément indisponible. Réessayez plus tard.",
+            radarBy: "Météo par",
             cmpToggle: "Comparer",
             cmpBtn: "Comparer",
             cmpMax: "Maximum 3 stations",
@@ -619,6 +668,14 @@
             nearmeTip: "Sort resorts by distance from your location",
             nearmeErr: "Location denied or unavailable",
             allcams: "All webcams",
+            radarBtn: "Radar",
+            radarTitle: "Snow & rain radar — France",
+            radarRain: "Rain",
+            radarSnow: "Snow",
+            radarSoon: "forecast",
+            radarLoad: "Loading radar…",
+            radarOff: "Radar temporarily unavailable. Try again later.",
+            radarBy: "Weather by",
             cmpToggle: "Compare",
             cmpBtn: "Compare",
             cmpMax: "Maximum 3 resorts",
@@ -1992,6 +2049,11 @@
           setTxt("cmp-toggle", "⚖️ " + t("cmpToggle"));
           setTitle("cmp-toggle", t("cmpMax"));
           setTxt("cams-all", "🖼 " + t("allcams"));
+          setTxt("radar-btn", "🌨 " + t("radarBtn"));
+          setTxt("radar-title", t("radarTitle"));
+          setTxt("radar-rain", t("radarRain"));
+          setTxt("radar-snow", t("radarSnow"));
+          setTxt("radar-by", t("radarBy"));
           setTxt("gallery-title", "🖼 " + t("allcams"));
           setTxt("cmp-open", t("cmpOpen"));
           setTxt("dt-share", t("share"));
@@ -2380,6 +2442,163 @@
           }
         });
 
+        /* ---------- v24 : radar pluie/neige temps reel (donnees RainViewer) ---------- */
+        var RADAR_API = "https://api.rainviewer.com/public/weather-maps.json";
+        var RADAR_TTL = 10 * 60 * 1000;
+        var radarData = null;
+        var radarTiles = null;
+        var radarErrEl = null;
+        var radarPos = 0;
+        var radarTimer = null;
+
+        function mercN(la) {
+          var r = Math.PI / 180;
+          return Math.log(Math.tan(Math.PI / 4 + la * r / 2));
+        }
+        function radarX(lo) { return (lo - LON_MIN) / (LON_MAX - LON_MIN); }
+        function radarY(la) {
+          var top = mercN(LAT_MAX), bot = mercN(LAT_MIN);
+          return (top - mercN(la)) / (top - bot);
+        }
+        function polyPathMerc(pts) {
+          var d = "";
+          for (var i = 0; i < pts.length; i++) {
+            d += (i === 0 ? "M" : " L") + (radarX(pts[i][0]) * 100).toFixed(2) + "," + (radarY(pts[i][1]) * 100).toFixed(2);
+          }
+          return d + " Z";
+        }
+        function tileLat(j, z) {
+          var n = Math.PI * (1 - 2 * j / Math.pow(2, z));
+          return Math.atan(Math.sinh(n)) * 180 / Math.PI;
+        }
+        function radarBuildBase() {
+          var mapEl = document.getElementById("radar-map");
+          if (!mapEl || radarTiles) { return; }
+          var z = 6, N = Math.pow(2, z);
+          var x0 = Math.max(0, Math.floor((LON_MIN + 180) / 360 * N));
+          var x1 = Math.min(N - 1, Math.floor((LON_MAX + 180) / 360 * N));
+          var y0 = Math.max(0, Math.floor((1 - mercN(LAT_MAX) / Math.PI) / 2 * N));
+          var y1 = Math.min(N - 1, Math.floor((1 - mercN(LAT_MIN) / Math.PI) / 2 * N));
+          radarTiles = [];
+          for (var tx = x0; tx <= x1; tx++) {
+            for (var ty = y0; ty <= y1; ty++) {
+              var img = document.createElement("img");
+              img.setAttribute("class", "radar-tile");
+              var lo0 = tx / N * 360 - 180, lo1 = (tx + 1) / N * 360 - 180;
+              var la0 = tileLat(ty, z), la1 = tileLat(ty + 1, z);
+              var lft = radarX(lo0) * 100, rgt = radarX(lo1) * 100;
+              var tp = radarY(la0) * 100, bt = radarY(la1) * 100;
+              img.style.left = lft.toFixed(2) + "%";
+              img.style.width = (rgt - lft).toFixed(2) + "%";
+              img.style.top = tp.toFixed(2) + "%";
+              img.style.height = (bt - tp).toFixed(2) + "%";
+              mapEl.appendChild(img);
+              radarTiles.push({ img: img, tx: tx, ty: ty });
+            }
+          }
+          var svg = '<svg viewBox="0 0 100 100" preserveAspectRatio="none">'
+            + '<path class="radar-land" d="' + polyPathMerc(FRANCE) + '"></path>'
+            + '<path class="radar-land" d="' + polyPathMerc(CORSICA) + '"></path>';
+          RESORTS.forEach(function (r) {
+            svg += '<circle class="radar-dot" cx="' + (radarX(r.lo) * 100).toFixed(2)
+              + '" cy="' + (radarY(r.la) * 100).toFixed(2)
+              + '" r="0.7" data-n="' + escapeHtml(r.n) + '"></circle>';
+          });
+          svg += "</svg>";
+          var err2 = document.createElement("div");
+          err2.setAttribute("id", "radar-err");
+          if (typeof mapEl.insertAdjacentHTML === "function") { mapEl.insertAdjacentHTML("beforeend", svg); }
+          else { mapEl.innerHTML = svg; }
+          mapEl.appendChild(err2);
+          radarErrEl = err2;
+        }
+        function radarShow(pos) {
+          if (!radarData || !radarData.frames.length) { return; }
+          var n = radarData.frames.length;
+          pos = ((pos % n) + n) % n;
+          radarPos = pos;
+          var f = radarData.frames[pos];
+          for (var i = 0; i < radarTiles.length; i++) {
+            var tl = radarTiles[i];
+            tl.img.src = radarData.host + f.path + "/256/6/" + tl.tx + "/" + tl.ty + "/2/1_1.png";
+          }
+          var tEl = document.getElementById("radar-time");
+          if (tEl) {
+            var d = new Date(f.time * 1000);
+            var hh = ("0" + d.getHours()).slice(-2), mi = ("0" + d.getMinutes()).slice(-2);
+            tEl.textContent = hh + ":" + mi;
+          }
+          var fl = document.getElementById("radar-flag");
+          if (fl) {
+            if (f.fut) {
+              var mins = Math.round((f.time - radarData.nowTs) / 60);
+              fl.textContent = "+" + mins + " min " + t("radarSoon");
+              fl.classList.add("show");
+            } else { fl.classList.remove("show"); }
+          }
+        }
+        function radarStop() {
+          if (radarTimer) { clearTimeout(radarTimer); radarTimer = null; }
+          var b = document.getElementById("radar-play");
+          if (b) { b.textContent = "\u25b6"; }
+        }
+        function radarTick() {
+          radarShow(radarPos + 1);
+          radarTimer = setTimeout(radarTick, 700);
+        }
+        function radarPlay() {
+          if (radarTimer) { radarStop(); return; }
+          var b = document.getElementById("radar-play");
+          if (b) { b.textContent = "\u23f8"; }
+          radarTick();
+        }
+        function radarLoad() {
+          radarBuildBase();
+          if (radarData) {
+            if (radarErrEl) { radarErrEl.classList.remove("show"); }
+            if (!radarTimer) { radarShow(radarPos); }
+            return;
+          }
+          if (radarErrEl) { radarErrEl.textContent = t("radarLoad"); radarErrEl.classList.add("show"); }
+          fetch(RADAR_API).then(function (r) { return r.json(); }).then(function (j) {
+            radarData = { host: j.host, at: Date.now(), frames: [], idxNow: 0, nowTs: 0 };
+            (j.radar && j.radar.past ? j.radar.past : []).forEach(function (q) {
+              radarData.frames.push({ time: q.time, path: q.path, fut: false });
+            });
+            radarData.idxNow = Math.max(0, radarData.frames.length - 1);
+            (j.radar && j.radar.nowcast ? j.radar.nowcast : []).forEach(function (q) {
+              radarData.frames.push({ time: q.time, path: q.path, fut: true });
+            });
+            if (!radarData.frames.length) { throw new Error("empty"); }
+            radarData.nowTs = radarData.frames[radarData.idxNow].time;
+            if (radarErrEl) { radarErrEl.classList.remove("show"); }
+            radarShow(radarData.idxNow);
+          }).catch(function () {
+            radarData = null;
+            if (radarErrEl) { radarErrEl.textContent = t("radarOff"); radarErrEl.classList.add("show"); }
+          });
+        }
+        function openRadar() {
+          var back = document.getElementById("radar-back");
+          if (!back) { return; }
+          back.classList.add("open");
+          radarLoad();
+        }
+        function closeRadar() {
+          radarStop();
+          var back = document.getElementById("radar-back");
+          if (back) { back.classList.remove("open"); }
+        }
+        onId("radar-btn", "click", openRadar);
+        onId("radar-close", "click", closeRadar);
+        onId("radar-prev", "click", function () { radarStop(); radarShow(radarPos - 1); });
+        onId("radar-next", "click", function () { radarStop(); radarShow(radarPos + 1); });
+        onId("radar-play", "click", radarPlay);
+        onId("radar-map", "click", function (ev) {
+          var nm = ev.target && ev.target.getAttribute ? ev.target.getAttribute("data-n") : null;
+          if (nm) { closeRadar(); openDetail(nm); }
+        });
+
         onId("dt-alert", "click", function () {
           if (!dtName) { return; }
           if (AL[dtName]) { delete AL[dtName]; }
@@ -2433,16 +2652,16 @@
             if (btn) { btn.title = t("nearmeErr"); }
           });
         });
-        ["gallery-back", "detail-back", "cmp-back", "feedback-back"].forEach(function (idz) {
+        ["gallery-back", "detail-back", "cmp-back", "feedback-back", "radar-back"].forEach(function (idz) {
           var elz = document.getElementById(idz);
           if (elz) {
             elz.addEventListener("click", function (ev) {
-              if (ev.target === elz) { closeGallery(); closeDetail(); closeCompare(); closeFeedback(); }
+              if (ev.target === elz) { closeGallery(); closeDetail(); closeCompare(); closeFeedback(); closeRadar(); }
             });
           }
         });
         document.addEventListener("keydown", function (ev) {
-          if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); closeGallery(); closeDetail(); closeCompare(); closeFeedback(); }
+          if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); closeGallery(); closeDetail(); closeCompare(); closeFeedback(); closeRadar(); }
         });
         document.addEventListener("visibilitychange", function () {
           var cb = document.getElementById("cam-modal-back");
@@ -2486,6 +2705,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="dLgpJycW0VnIrxTMr1AX3A==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="LpcdDyf+xoN4M8gtL5izbA==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
