@@ -94,8 +94,8 @@
       .temp { position: absolute; top: 12px; left: 14px; }
       /* v13: near-me / gallery / compare / detail */
       .dist { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #eaf3fe; border: 1px solid #cfe3f6; color: #1b4f8f; font-size: 10.5px; font-weight: 600; }
-      .btn-row { display: flex; gap: 6px; margin-top: 10px; padding: 0 16px; }
-      .btn-row .cam-btn { width: auto; flex: 1; margin-top: 0; }
+      .dt-btn { display: block; margin: 8px auto 2px; padding: 3px 12px; font-size: 11.5px; font-weight: 600; color: #1b4f8f; background: #eaf3fe; border: 1px solid #cfe3f6; border-radius: 999px; cursor: pointer; }
+      .dt-btn:hover { background: #dceafb; }
       .cam-btn.sel { outline: 2px solid #f5b301; outline-offset: 1px; }
       #cmp-tray { display: none; position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; align-items: center; gap: 8px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; box-shadow: 0 4px 18px rgba(15,30,60,.18); z-index: 50; max-width: 92vw; flex-wrap: wrap; }
       #cmp-tray.show { display: flex; }
@@ -108,8 +108,15 @@
       .glm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; text-align: left; }
       .glm-cell h3 { font-size: 13.5px; margin: 0 0 8px; }
       .glm-cell .cam-img { margin: 0 0 8px; }
-      .mt-svg { width: 100%; max-width: 430px; display: block; margin: 0 auto 12px; }
+      .mt-svg { width: 100%; max-width: 470px; display: block; margin: 0 auto 12px; border-radius: 12px; border: 1px solid var(--line); }
       .mt-lbl { font: 600 10.5px system-ui, sans-serif; fill: #1b4f8f; }
+      .mt-sub { font-size: 9.5px; font-weight: 500; }
+      .mts1 { stop-color: #7fb1dd; } .mts2 { stop-color: #cfe3f4; } .mts3 { stop-color: #f3e9d8; }
+      .mtr-far { fill: #b6c9dd; } .mtr-mid { fill: #94aec9; }
+      .mtr-main { fill: #6f93b5; stroke: #55708e; stroke-width: 1; }
+      .mt-face { fill: rgba(255,255,255,.10); }
+      .mtc-bg { fill: rgba(255,255,255,.88); stroke: #9fc4e8; stroke-width: .8; }
+      .mt-leader { stroke: rgba(27,79,143,.45); }
       .dt-rank { text-align: center; font-size: 12px; color: var(--muted); margin: 0 0 10px; }
       .dt-body .card { width: 100%; max-width: 350px; margin: 0 auto; }
       button:disabled { opacity: .5; cursor: default; }
@@ -156,6 +163,11 @@
       .cam-img { width: 100%; border-radius: 10px; display: block; margin: 0 0 10px; }
       .cam-img.hide { display: none; }
       .cam-note { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+      .cam-count { font-size: 12.5px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; margin-right: auto; }
+      .cam-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: camPulse 1.6s infinite; flex: none; }
+      .cam-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 10px; margin: 0 0 10px; }
+      .cam-scroll .cam-img { width: auto; max-width: none; height: 280px; margin: 0; border-radius: 10px; }
+      .cam-scroll.hide { display: none; }
       .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
       .modal-actions button, .modal-actions a {
         font: inherit; font-size: 13px; padding: 8px 12px; border-radius: 8px;
@@ -188,6 +200,12 @@
         #cmp-tray { box-shadow: 0 4px 18px rgba(0, 0, 0, .5); }
         .cmp-table th { background: #1d2c47; }
         .mt-lbl { fill: #c3dbf6; }
+        .mts1 { stop-color: #101e33; } .mts2 { stop-color: #0d1a2e; } .mts3 { stop-color: #0c1524; }
+        .mtr-far { fill: #263a58; } .mtr-mid { fill: #2f4a6d; } .mtr-main { fill: #3c5a7e; stroke: #2b4262; }
+        .mt-face { fill: rgba(255,255,255,.06); }
+        .mtc-bg { fill: rgba(22,35,58,.92); stroke: #3d5f8a; }
+        .mt-leader { stroke: rgba(163,205,245,.55); }
+        .dt-btn { background: rgba(122, 184, 238, .12); border-color: #3d5f8a; color: #c3dbf6; }
       }
       @media (max-width: 560px) { h1 { font-size: 21px; } .card .stats { flex-direction: column; } }
     </style>
@@ -256,6 +274,7 @@
           <h2 id="cam-title"></h2>
           <div id="cam-body"></div>
           <div class="modal-actions">
+            <span id="cam-count" class="cam-count"></span>
             <button id="cam-refresh" type="button"></button>
             <a id="cam-more" href="#" target="_blank" rel="noopener"></a>
           </div>
@@ -429,6 +448,7 @@
             camNote: "Images en direct proposées par les stations (actualisées environ toutes les 15 minutes). Cliquez sur 🔄 pour les rafraîchir.",
             camNone: "Pas encore de webcam intégrable pour cette station. Utilisez le bouton ci-dessous pour trouver ses webcams sur le web.",
             camRefresh: "🔄 Actualiser",
+            camAuto: "En direct · nouvelle photo dans {x} s",
             camMore: "🔍 Autres webcams sur le web",
             camOk: "Webcams en direct disponibles ✓",
             camKo: "Webcam indisponible pour le moment ✕",
@@ -497,6 +517,7 @@
             camNote: "Live images provided by the resorts (refreshed about every 15 minutes). Click 🔄 to reload them.",
             camNone: "No embeddable webcam for this resort yet. Use the button below to find its webcams on the web.",
             camRefresh: "🔄 Refresh",
+            camAuto: "Live · new photo in {x} s",
             camMore: "🔍 More webcams on the web",
             camOk: "Live webcams available ✓",
             camKo: "Webcam unavailable right now ✕",
@@ -716,6 +737,13 @@
             "https://api.skaping.com/QzlPb-9TgDQ-UcTxH-xv8KW/media/latest/large.jpg",
             "https://api.skaping.com/0qmB-W208-FhUp-eDJW-695z/media/latest/large.jpg"
           ],
+          "Tignes": [
+            "https://www.tignes.co.uk/webcamlelac.jpg",
+            "https://backend.roundshot.com/cams/220",
+            "https://www.tignes.co.uk/webcamvalclaret.jpg",
+            "https://www.tignes.co.uk/webcam-toviere.jpg",
+            "https://www.tignes.co.uk/webcam-grandemotte2.jpg"
+          ],
           "Courchevel": [
             "https://api.skaping.com/pWfQi-2gt37-n9ACU-ciSIg/media/latest/hd.jpg"
           ],
@@ -816,6 +844,112 @@
           ],
           "Villard-de-Lans": [
             "https://app.webcam-hd.com/tnm/ibox/FTPCam/villard-de-lans_village.jpg"
+          ],
+          "Les Contamines": [
+            "https://images.bergfex.at/webcams/?id=11993&format=4",
+            "https://images.bergfex.at/webcams/?id=25124&format=4",
+            "https://images.bergfex.at/webcams/?id=23744&format=4"
+          ],
+          "Val d'Isère": [
+            "https://www.tignes.co.uk/webcam-valdisere.jpg",
+            "https://www.tignes.co.uk/webcam-valtown.jpg",
+            "https://www.tignes.co.uk/webcam-bellevarde.jpg",
+            "https://www.tignes.co.uk/webcam-chaudannes.jpg",
+            "https://www.tignes.co.uk/webcam-upnover.jpg"
+          ],
+          "La Plagne": [
+            "https://images.bergfex.at/webcams/?id=7296&format=4",
+            "https://images.bergfex.at/webcams/?id=21190&format=4",
+            "https://images.bergfex.at/webcams/?id=3603&format=4"
+          ],
+          "Sainte-Foy Tarentaise": [
+            "https://images.bergfex.at/webcams/?id=24424&format=4",
+            "https://images.bergfex.at/webcams/?id=22897&format=4",
+            "https://images.bergfex.at/webcams/?id=22898&format=4"
+          ],
+          "Saint-Sorlin-d'Arves": [
+            "https://images.bergfex.at/webcams/?id=23790&format=4",
+            "https://images.bergfex.at/webcams/?id=25579&format=4"
+          ],
+          "Alpe d'Huez": [
+            "https://images.bergfex.at/webcams/?id=16812&format=4"
+          ],
+          "Chamrousse": [
+            "https://images.bergfex.at/webcams/?id=4259&format=4"
+          ],
+          "Puy-Saint-Vincent": [
+            "https://images.bergfex.at/webcams/?id=19965&format=4",
+            "https://images.bergfex.at/webcams/?id=19966&format=4",
+            "https://images.bergfex.at/webcams/?id=22676&format=4"
+          ],
+          "Les Orres": [
+            "https://images.bergfex.at/webcams/?id=23587&format=4",
+            "https://images.bergfex.at/webcams/?id=22521&format=4",
+            "https://images.bergfex.at/webcams/?id=24805&format=4"
+          ],
+          "Val d'Allos - La Foux": [
+            "https://images.bergfex.at/webcams/?id=8964&format=4",
+            "https://images.bergfex.at/webcams/?id=4482&format=4",
+            "https://images.bergfex.at/webcams/?id=8965&format=4"
+          ],
+          "Métabief": [
+            "https://images.bergfex.at/webcams/?id=3914&format=4",
+            "https://images.bergfex.at/webcams/?id=3917&format=4"
+          ],
+          "Monts-Jura": [
+            "https://images.bergfex.at/webcams/?id=13877&format=4",
+            "https://images.bergfex.at/webcams/?id=3921&format=4",
+            "https://images.bergfex.at/webcams/?id=24122&format=4"
+          ],
+          "Piau-Engaly": [
+            "https://images.bergfex.at/webcams/?id=25048&format=4",
+            "https://images.bergfex.at/webcams/?id=25054&format=4"
+          ],
+          "Artouste": [
+            "https://images.bergfex.at/webcams/?id=24854&format=4"
+          ],
+          "Gourette": [
+            "https://images.bergfex.at/webcams/?id=26645&format=4",
+            "https://images.bergfex.at/webcams/?id=25032&format=4",
+            "https://images.bergfex.at/webcams/?id=25033&format=4"
+          ],
+          "La Pierre Saint-Martin": [
+            "https://images.bergfex.at/webcams/?id=25041&format=4",
+            "https://images.bergfex.at/webcams/?id=25043&format=4"
+          ],
+          "Monts d'Olmes": [
+            "https://images.bergfex.at/webcams/?id=25483&format=4"
+          ],
+          "Ax 3 Domaines": [
+            "https://images.bergfex.at/webcams/?id=23812&format=4",
+            "https://images.bergfex.at/webcams/?id=23813&format=4",
+            "https://images.bergfex.at/webcams/?id=23814&format=4"
+          ],
+          "Ascou-Pailhères": [
+            "https://images.bergfex.at/webcams/?id=20939&format=4"
+          ],
+          "Camurac": [
+            "https://images.bergfex.at/webcams/?id=23674&format=4"
+          ],
+          "Les Angles": [
+            "https://images.bergfex.at/webcams/?id=25065&format=4",
+            "https://images.bergfex.at/webcams/?id=25066&format=4"
+          ],
+          "Porté-Puymorens": [
+            "https://images.bergfex.at/webcams/?id=23722&format=4",
+            "https://images.bergfex.at/webcams/?id=23721&format=4"
+          ],
+          "Font-Romeu / Pyrénées 2000": [
+            "https://images.bergfex.at/webcams/?id=24392&format=4",
+            "https://images.bergfex.at/webcams/?id=24389&format=4",
+            "https://images.bergfex.at/webcams/?id=25068&format=4"
+          ],
+          "Val d'Ese (Ghisoni)": [
+            "https://images.bergfex.at/webcams/?id=13941&format=4",
+            "https://images.bergfex.at/webcams/?id=21183&format=4"
+          ],
+          "Le Mourtis": [
+            "https://cdn.skylinewebcams.com/live5259.jpg"
           ]
         };
 
@@ -1070,6 +1204,13 @@
 
         /* ---------- webcam modal ---------- */
         var currentCam = "";
+        var camTick = null;
+        var camSec = 0;
+        var CAM_REFRESH = 60;
+        function bustUrl(u) {
+          var sep = (u.indexOf("?") >= 0) ? "&" : "?";
+          return u + sep + "fsr=" + Date.now();
+        }
         function openCams(name, bust) {
           currentCam = name || "";
           var back = document.getElementById("cam-modal-back");
@@ -1080,13 +1221,17 @@
           var body = document.getElementById("cam-body");
           if (body) {
             var urls = WC[name] || [];
-            var b = bust ? "?fsr=" + Date.now() : "";
             var html = "";
             var i;
             if (urls.length) {
               html += '<p class="cam-note">' + escapeHtml(t("camNote")) + "</p>";
               for (i = 0; i < urls.length; i++) {
-                html += '<img class="cam-img" src="' + escapeHtml(urls[i] + b) + '" alt="' + escapeHtml(name) + '" />';
+                var pu = escapeHtml(bust ? bustUrl(urls[i]) : urls[i]);
+                if (urls[i].indexOf("images.bergfex.at") >= 0) {
+                  html += '<div class="cam-scroll"><img class="cam-img" src="' + pu + '" alt="' + escapeHtml(name) + '" /></div>';
+                } else {
+                  html += '<img class="cam-img" src="' + pu + '" alt="' + escapeHtml(name) + '" />';
+                }
               }
             } else {
               html += '<p class="cam-note">' + escapeHtml(t("camNone")) + "</p>";
@@ -1097,15 +1242,41 @@
               for (i = 0; i < imgs.length; i++) {
                 imgs[i].addEventListener("error", function () {
                   if (this.classList) { this.classList.add("hide"); }
+                  var w = this.parentNode;
+                  if (w && w.classList && w.classList.contains && w.classList.contains("cam-scroll")) { w.classList.add("hide"); }
                 });
               }
             }
           }
           back.classList.add("open");
+          startCamAuto();
+        }
+        /* ---------- v16: webcams quasi-live (refresh auto) ---------- */
+        function camCountdown() {
+          setHtml("cam-count", '<span class="cam-dot"></span>' + escapeHtml(t("camAuto").replace("{x}", String(camSec))));
+        }
+        function startCamAuto() {
+          stopCamAuto();
+          var has = currentCam && (WC[currentCam] || []).length > 0;
+          if (!has) { setTxt("cam-count", ""); return; }
+          camSec = CAM_REFRESH;
+          camCountdown();
+          camTick = setTimeout(function camTickFn() {
+            camSec -= 1;
+            if (camSec <= 0) { openCams(currentCam, true); return; }
+            camCountdown();
+            camTick = setTimeout(camTickFn, 1000);
+          }, 1000);
+        }
+        function stopCamAuto() {
+          if (camTick) { clearTimeout(camTick); }
+          camTick = null;
         }
         function closeCams() {
           var back = document.getElementById("cam-modal-back");
           if (back) { back.classList.remove("open"); }
+          stopCamAuto();
+          setTxt("cam-count", "");
         }
 
         /* ---------- v13: distance (Near me) ---------- */
@@ -1144,40 +1315,122 @@
         }
 
         /* ---------- v13: resort detail + mountain ---------- */
+        var mtSeq = 0;
         function mountainSvg(r, m) {
           if (!m) { return ""; }
           var top = r.top, ba = r.ba, mid = midAlt(r);
-          var yTop = 26, yBa = 164, peakX = 170, halfX = 145;
+          var yTop = 38, yBa = 190;
           function yFor(alt) { return yBa - ((alt - ba) / Math.max(1, top - ba)) * (yBa - yTop); }
-          function xAt(y, side) { var d = halfX * ((y - yTop) / Math.max(1, yBa - yTop)); return peakX + (side > 0 ? d : -d); }
-          var yM = Math.round(yFor(mid));
           var sl = snowlineAlt(r, m);
-          var capY = (typeof sl === "number") ? Math.max(yTop + 5, Math.round(yFor(sl))) : yTop + 14;
+          var capY = (typeof sl === "number")
+            ? Math.max(yTop + 6, Math.min(yBa - 8, Math.round(yFor(sl))))
+            : yTop + 30;
           var dd = function (v) { return (typeof v === "number") ? v + " cm" : "…"; };
           var tt = function (v) { return (typeof v === "number") ? ((v > 0 ? "+" : "") + v + "°C") : "…"; };
-          var h = '<svg class="mt-svg" viewBox="0 0 340 200" role="img" aria-label="' + escapeHtml(r.n) + '">';
-          h += '<polygon points="' + peakX + "," + yTop + " 25," + yBa + " 315," + yBa + '" fill="#6f93b5" stroke="#55708e" stroke-width="1" />';
-          h += '<polygon points="' + peakX + "," + yTop + " " + Math.round(xAt(capY, -1)) + "," + capY + " " + Math.round(xAt(capY, 1)) + "," + capY + '" fill="#fff" stroke="#d7e6f5" stroke-width="1" />';
-          function band(y, depth) {
-            var hh = (typeof depth === "number") ? Math.max(2, Math.min(20, Math.round(depth / 6))) : 2;
-            var ya = Math.min(yBa - 2, y + 3);
-            var xa = Math.round(xAt(ya, -1)) + 5, xb = Math.round(xAt(ya, 1)) - 5;
-            return '<rect x="' + xa + '" y="' + ya + '" width="' + Math.max(10, xb - xa) + '" height="' + hh + '" fill="#fff" stroke="#dbe8f5" stroke-width="0.6" rx="2" />';
+          /* jagged alpine ridge, defined once */
+          var pts = [
+            [14, 196], [52, 156], [78, 168], [106, 120], [120, 130], [150, 70],
+            [170, 38], [198, 86], [218, 80], [252, 124], [274, 112], [300, 168], [326, 196]
+          ];
+          var ridge = pts.map(function (q) { return q[0] + "," + q[1]; }).join(" ");
+          function edgesAt(y) {
+            var xs = [];
+            for (var i = 0; i < pts.length - 1; i++) {
+              var a2 = pts[i], b2 = pts[i + 1];
+              var dy = b2[1] - a2[1];
+              if (Math.abs(dy) < 0.001) { continue; }
+              if (y >= Math.min(a2[1], b2[1]) && y <= Math.max(a2[1], b2[1])) {
+                xs.push(a2[0] + ((y - a2[1]) / dy) * (b2[0] - a2[0]));
+              }
+            }
+            if (!xs.length) { return null; }
+            return [Math.min.apply(null, xs), Math.max.apply(null, xs)];
           }
-          h += band(yTop, m.dTop);
-          h += band(yM, m.dMid);
-          h += band(yBa, m.dBase);
-          function line(y, color) { return '<line x1="' + Math.round(xAt(y, -1)) + '" y1="' + y + '" x2="' + Math.round(xAt(y, 1)) + '" y2="' + y + '" stroke="' + color + '" stroke-width="1.2" stroke-dasharray="4 3" />'; }
-          h += line(yTop, "#eaf3fe");
-          h += line(yM, "#eaf3fe");
-          h += line(yBa, "#eaf3fe");
+          mtSeq++;
+          var idSky = "mtsky" + mtSeq, idSn = "mtsn" + mtSeq, idSh = "mtsh" + mtSeq, idClip = "mtc" + mtSeq;
+          var h = '<svg class="mt-svg" viewBox="0 0 340 220" role="img" aria-label="' + escapeHtml(r.n) + '">';
+          h += '<defs>';
+          h += '<linearGradient id="' + idSky + '" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" class="mts1"/><stop offset=".55" class="mts2"/><stop offset="1" class="mts3"/></linearGradient>';
+          h += '<linearGradient id="' + idSn + '" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#dcebf8"/></linearGradient>';
+          h += '<linearGradient id="' + idSh + '" x1="0" y1="0" x2="0" y2="1">' +
+            '<stop offset="0" stop-color="#14283f" stop-opacity=".32"/><stop offset=".7" stop-color="#14283f" stop-opacity="0"/></linearGradient>';
+          /* snow drape: wavy clip along the rain/snow limit so snow follows the terrain */
+          h += '<clipPath id="' + idClip + '"><path d="M0,' + capY + ' q14,10 28,0 t28,0 t28,0 t28,0 t28,0 t28,0 t28,0 t28,0 t28,0 t28,0 t28,0 t28,0 L340,' + capY + ' L340,0 L0,0 Z"/></clipPath>';
+          h += '</defs>';
+          /* sky, sun, clouds, birds */
+          h += '<rect x="0" y="0" width="340" height="220" fill="url(#' + idSky + ')"/>';
+          h += '<circle cx="44" cy="44" r="15" fill="#ffe9b8" opacity=".35"/><circle cx="44" cy="44" r="8" fill="#ffe9b8"/>';
+          h += '<ellipse cx="252" cy="54" rx="24" ry="6" fill="#fff" opacity=".55"/>';
+          h += '<ellipse cx="292" cy="66" rx="16" ry="5" fill="#fff" opacity=".45"/>';
+          h += '<ellipse cx="86" cy="92" rx="18" ry="5" fill="#fff" opacity=".4"/>';
+          h += '<path d="M96,40 q4,-4 8,0 M108,36 q4,-4 8,0" stroke="#37506e" stroke-width="1" fill="none" opacity=".6"/>';
+          /* far ridges (atmospheric perspective) */
+          h += '<polygon points="0,196 34,142 96,196" class="mtr-far"/>';
+          h += '<polygon points="108,196 150,136 208,196" class="mtr-far"/>';
+          h += '<polygon points="228,196 292,128 340,196" class="mtr-far"/>';
+          h += '<polygon points="0,196 58,164 118,196" class="mtr-mid"/>';
+          h += '<polygon points="252,196 306,158 340,196" class="mtr-mid"/>';
+          /* main ridge with sunlit west face */
+          h += '<polygon points="' + ridge + '" class="mtr-main" stroke-linejoin="round"/>';
+          h += '<polygon points="14,196 52,156 78,168 106,120 120,130 150,70 170,38 170,196" class="mt-face"/>';
+          h += '<polygon points="' + ridge + '" fill="url(#' + idSh + ')"/>';
+          /* snow above the wavy limit, following the ridge */
+          h += '<polygon points="' + ridge + '" fill="url(#' + idSn + ')" clip-path="url(#' + idClip + ')"/>';
+          /* snow tongues in the gullies below the limit */
+          [Math.min(capY + 18, 150), Math.min(capY + 36, 160)].forEach(function (sy, k) {
+            if (k === 1 && capY > 130) { return; }
+            var e = edgesAt(sy);
+            if (e && e[1] - e[0] > 46) {
+              var w = e[1] - e[0] - 20;
+              h += '<path d="M' + (e[0] + 10) + "," + sy + " q" + Math.round(w * .3) + ",-10 " + Math.round(w * .6) +
+                ",-2 q" + Math.round(w * .2) + ",5 " + Math.round(w * .4) + ",-4" +
+                '" stroke="#fff" stroke-width="' + (k === 0 ? 4 : 3.5) + '" fill="none" stroke-linecap="round" opacity=".5"/>';
+            }
+          });
+          /* snowy valley floor with piste village */
+          h += '<path d="M0,196 Q84,182 170,190 Q258,198 340,186 L340,220 L0,220 Z" fill="url(#' + idSn + ')"/>';
+          h += '<path d="M60,206 L86,194" stroke="#c9dced" stroke-width="1" opacity=".8"/>' +
+            '<path d="M220,204 L252,193" stroke="#c9dced" stroke-width="1" opacity=".8"/>';
+          function tree(x2, th) {
+            return '<polygon points="' + x2 + "," + (195 - th) + " " + (x2 - Math.max(3, Math.round(th * 0.4))) + ",195 " + (x2 + Math.max(3, Math.round(th * 0.4))) + ',195" fill="#3f6b4f"/>' +
+              '<polygon points="' + x2 + "," + (195 - th - 1) + " " + (x2 - Math.max(2, Math.round(th * 0.3))) + "," + (195 - Math.round(th * .45)) + " " + (x2 + Math.max(2, Math.round(th * 0.3))) + "," + (195 - Math.round(th * .45)) + '" fill="#4a7a5c"/>';
+          }
+          function chalet(x2) {
+            return '<g><rect x="' + x2 + '" y="186" width="15" height="9" fill="#6b4f3a"/>' +
+              '<polygon points="' + (x2 - 2) + ",186 " + (x2 + 7) + ",179 " + (x2 + 17) + ',186" fill="#f4f8fc" stroke="#d7e1ec" stroke-width="0.5"/>' +
+              '<rect x="' + (x2 + 5) + '" y="188" width="4" height="4" fill="#ffd27a"/></g>';
+          }
+          h += tree(64, 13) + tree(80, 9) + tree(96, 15) + tree(258, 12) + tree(272, 8) + tree(308, 14);
+          h += chalet(28) + chalet(128) + chalet(290);
+          /* rain/snow limit dashed line (if a numeric limit exists) */
           if (typeof sl === "number") {
             var slY = Math.round(yFor(sl));
-            if (slY > yTop + 3 && slY < yBa - 1) { h += line(slY, "#f5a301"); }
+            var se = edgesAt(slY);
+            if (se && se[1] - se[0] > 20 && slY > yTop + 4 && slY < yBa - 4) {
+              h += '<line x1="' + Math.round(se[0] + 4) + '" y1="' + slY + '" x2="' + Math.round(se[1] - 4) +
+                '" y2="' + slY + '" stroke="#f5a301" stroke-width="1.3" stroke-dasharray="5 4" opacity=".85"/>';
+            }
           }
-          h += '<text x="14" y="' + (yTop - 6) + '" class="mt-lbl">' + escapeHtml(t("altSummit") + " " + top + " m · " + dd(m.dTop) + " · " + tt(m.tTop)) + "</text>";
-          h += '<text x="14" y="' + (yM - 5) + '" class="mt-lbl">' + escapeHtml(t("altMid") + " " + mid + " m · " + dd(m.dMid) + " · " + tt(m.tMid)) + "</text>";
-          h += '<text x="14" y="' + (yBa - 5) + '" class="mt-lbl">' + escapeHtml(t("altVillage") + " " + ba + " m · " + dd(m.dBase) + " · " + tt(m.tBase)) + "</text>";
+          /* altitude info chips + leader lines */
+          function chip(labelTxt, alt, depth, temp) {
+            var y = Math.round(yFor(alt));
+            var cy = Math.max(4, Math.min(176, y - 13));
+            var lead = "";
+            var e = edgesAt(y);
+            if (e && e[0] > 134) {
+              lead = '<line x1="128" y1="' + y + '" x2="' + Math.round(Math.min(e[0], 166)) + '" y2="' + y +
+                '" class="mt-leader" stroke-dasharray="3 3" stroke-width="1"/>';
+            }
+            return lead +
+              '<rect x="10" y="' + cy + '" width="118" height="26" rx="7" class="mtc-bg"/>' +
+              '<text x="16" y="' + (cy + 12) + '" class="mt-lbl">' + escapeHtml(labelTxt + " " + alt + " m") + "</text>" +
+              '<text x="16" y="' + (cy + 22) + '" class="mt-lbl mt-sub">' + escapeHtml(tt(temp) + " · " + dd(depth)) + "</text>";
+          }
+          h += chip(t("altSummit"), top, m.dTop, m.tTop);
+          h += chip(t("altMid"), mid, m.dMid, m.tMid);
+          h += chip(t("altVillage"), ba, m.dBase, m.tBase);
           h += "</svg>";
           return h;
         }
@@ -1305,6 +1558,12 @@
             n.title = tip;
           }
         }
+        function camProbeUrl(u) {
+          if (u.indexOf("images.bergfex.at") >= 0 && u.indexOf("format=4") >= 0) {
+            return u.replace("format=4", "format=1");
+          }
+          return u;
+        }
         function checkCam(name) {
           var urls = WC[name] || [];
           if (!urls.length) { return; }
@@ -1325,7 +1584,7 @@
           var timer = setTimeout(function () { finish(false); }, 10000);
           img.onload = function () { clearTimeout(timer); finish(true); };
           img.onerror = function () { clearTimeout(timer); finish(false); };
-          img.src = urls[0];
+          img.src = camProbeUrl(urls[0]);
         }
         function checkCams() {
           var g = document.getElementById("grid");
@@ -1512,10 +1771,8 @@
               "</div>" +
               chartHtml +
               '<button class="cam-btn" type="button" data-cams="' + escapeHtml(r.n) + '">📷 ' + escapeHtml(t("cams")) + camStateHtml(r.n) + "</button>" +
-              '<div class="btn-row">' +
-                '<button class="cam-btn" type="button" data-detail="' + escapeHtml(r.n) + '">📊 ' + escapeHtml(t("detail")) + "</button>" +
-                (cmpMode ? '<button class="cam-btn' + (cmp[r.n] ? " sel" : "") + '" type="button" data-cmp="' + escapeHtml(r.n) + '">⚖️ ' + escapeHtml(t("cmpBtn")) + "</button>" : "") +
-              "</div>" +
+              (cmpMode ? '<button class="cam-btn' + (cmp[r.n] ? " sel" : "") + '" type="button" data-cmp="' + escapeHtml(r.n) + '">⚖️ ' + escapeHtml(t("cmpBtn")) + "</button>" : "") +
+              '<button class="dt-btn" type="button" data-detail="' + escapeHtml(r.n) + '">📊 ' + escapeHtml(t("detail")) + "</button>" +
             "</div>"
           );
         }
@@ -1768,6 +2025,10 @@
           if (ev.key === "Escape" || ev.code === "Escape") { closeCams(); closeGallery(); closeDetail(); closeCompare(); }
         });
         document.addEventListener("visibilitychange", function () {
+          var cb = document.getElementById("cam-modal-back");
+          var camOpen = !!(cb && cb.classList.contains && cb.classList.contains("open"));
+          if (document.hidden) { stopCamAuto(); }
+          else if (camOpen) { startCamAuto(); }
           if (!document.hidden && mode !== "live") { loadLive(); }
         });
 
@@ -1777,6 +2038,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="UsHWHlw7FbfcDpuCpYNE4A==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="jXjuWB+v7SCqC924c+o1uw==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
