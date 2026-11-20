@@ -48,6 +48,23 @@
       .notice.demo { background: #fff6e0; border: 1px solid #eccb7a; color: #6b4d00; }
       .notice.error { background: #fdeaea; border: 1px solid #e5a1a1; color: #7d1f1f; }
       .notice.alert { background: #eaf6ff; border: 1px solid #8ecbff; color: #0a4d7a; }
+      #don-toast {
+        position: fixed;
+        left: 50%;
+        bottom: 20px;
+        transform: translateX(-50%);
+        background: #0a3060;
+        color: #eaf4ff;
+        padding: 10px 18px;
+        border-radius: 10px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+        font-size: 14px;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.25s;
+        z-index: 999;
+      }
+      #don-toast.show { opacity: 1; visibility: visible; }
       .hide { display: none !important; }
       .fb-chips { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
       .fb-chip { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 20px; padding: 8px 14px; cursor: pointer; font: inherit; }
@@ -262,6 +279,7 @@
       <div class="notice error" id="err-note"></div>
       <div class="notice demo" id="slow-note"></div>
       <div class="notice alert" id="alert-note"></div>
+      <div id="don-toast"></div>
       <div id="top10" class="top-wrap"></div>
       <div class="grid" id="grid"></div>
       <div id="map-view" class="view-hidden">
@@ -517,6 +535,7 @@
             share: "🔗 Partager",
             shareOk: "✅ Lien copié !",
             don: "☕ Offrir un café",
+            donSoon: "☕ Bientôt disponible !",
             alertOn: "🔔✅ Alerte poudreuse activée",
             alertOff: "🔔 M'alerter si ≥ 20 cm prévus",
             alertBanner: "Alerte poudreuse",
@@ -603,6 +622,7 @@
             share: "🔗 Share",
             shareOk: "✅ Link copied!",
             don: "☕ Buy me a coffee",
+            donSoon: "☕ Coming soon!",
             alertOn: "🔔✅ Powder alert on",
             alertOff: "🔔 Alert me when ≥ 20 cm forecast",
             alertBanner: "Powder alert",
@@ -1978,10 +1998,7 @@
           var ib = document.getElementById("install-btn");
           if (ib) { ib.classList.toggle("hide", !installEvt); }
           var db = document.getElementById("don-btn");
-          if (db) {
-            if (DON_URL) { db.classList.remove("hide"); db.textContent = t("don"); }
-            else { db.classList.add("hide"); }
-          }
+          if (db) { db.textContent = t("don"); }
           refreshAlertBtn();
           setTxt("t-favlegend", t("favLegend"));
           setTitle("zoom-in", t("zoomIn"));
@@ -2367,9 +2384,18 @@
           storeSet("fsr-alerts", JSON.stringify(Object.keys(AL)));
           refreshAlertBtn();
         });
+        var donToastTimer = null;
         onId("don-btn", "click", function () {
+          var dtn = document.getElementById("don-toast");
           if (DON_URL && typeof window !== "undefined" && window.open) {
             try { window.open(DON_URL, "_blank"); } catch (e) {}
+            return;
+          }
+          if (dtn) {
+            dtn.textContent = t("donSoon");
+            dtn.classList.add("show");
+            if (donToastTimer) { clearTimeout(donToastTimer); }
+            donToastTimer = setTimeout(function () { dtn.classList.remove("show"); }, 2500);
           }
         });
         onId("cmp-close", "click", closeCompare);
@@ -2452,6 +2478,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="FRCgVFUrthdxCGTR++eP4Q==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="sCGRPsQ2gGD4Ujy02SSaDQ==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
