@@ -330,6 +330,7 @@
     <main class="wrap">
       <div class="notice demo" id="demo-note"></div>
       <div class="notice error" id="err-note"></div>
+      <div class="notice alert" id="install-note"></div>
       <div class="notice demo" id="slow-note"></div>
       <div class="notice alert" id="alert-note"></div>
       <div id="don-toast"></div>
@@ -630,6 +631,8 @@
             alertBanner: "Alerte poudreuse",
             install: "📱 Installer l'app",
             installOk: "✅ Application installée",
+            installIos: "📱 Sur iPhone ou iPad : appuyez sur le bouton Partager (le carré avec une flèche vers le haut) et choisissez 'Sur l'écran d'accueil'.",
+            installMenu: "📱 Installez l'app depuis le menu du navigateur (les trois points) : choisissez 'Installer l'application' ou 'Ajouter à l'écran d'accueil'.",
             feedback: "Idée / Bug",
             fbTitle: "Une idée ? Un bug ?",
             fbBug: "🐞 Un bug",
@@ -729,6 +732,8 @@
             alertBanner: "Powder alert",
             install: "📱 Install app",
             installOk: "✅ App installed",
+            installIos: "📱 On iPhone or iPad: tap the Share button (the square with an up arrow) and choose 'Add to Home Screen'.",
+            installMenu: "📱 Install the app from the browser menu (the three dots): choose 'Install app' or 'Add to Home Screen'.",
             feedback: "Idea / Bug",
             fbTitle: "An idea? A bug?",
             fbBug: "🐞 A bug",
@@ -781,7 +786,8 @@
 
         var DATA = {};      /* per resort metrics */
         var mode = "loading"; /* loading | live | partial | cached | demo */
-        var APP_VER = "v33"; /* affiche dans la ligne d'infos pour verifier d'un coup d'oeil la version */
+        var APP_VER = "v34"; /* affiche dans la ligne d'infos pour verifier d'un coup d'oeil la version */
+        var GC_CODE = ""; /* v34 : code GoatCounter (compteur de visites respectueux de la vie privee), vide = desactive */
         var lastUpdate = null;
         var lastErr = "";
         var last429 = 0;   /* v33 : date du dernier HTTP 429 (limite d'appels par adresse IP) */
@@ -1915,6 +1921,12 @@
                 }
               }).catch(function () {});
             } catch (e) {}
+          } else {
+            /* v34 : iPhone, iPad et certains navigateurs ne declenchent pas l'evenement natif : on affiche la marche a suivre */
+            var isIos = false;
+            try { isIos = /iphone|ipad|ipod/i.test(navigator.userAgent); } catch (e) {}
+            notice("install-note", true, t(isIos ? "installIos" : "installMenu"));
+            setTimeout(function () { notice("install-note", false, ""); }, 15000);
           }
         });
 
@@ -2532,8 +2544,14 @@
           setTxt("fb-gh", t("fbGh"));
           fbMode();
           setTxt("install-btn", t("install"));
+          /* v34 : bouton toujours visible, sauf si l'app est deja installee */
           var ib = document.getElementById("install-btn");
-          if (ib) { ib.classList.toggle("hide", !installEvt); }
+          var standalone = false;
+          try {
+            standalone = (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+              (window.navigator && window.navigator.standalone === true);
+          } catch (e) {}
+          if (ib) { ib.classList.toggle("hide", standalone); }
           var db = document.getElementById("don-btn");
           if (db) { db.textContent = t("don"); }
           refreshAlertBtn();
@@ -3270,6 +3288,17 @@
             typeof location !== "undefined" && location.protocol &&
             location.protocol.indexOf("http") === 0) {
           try { navigator.serviceWorker.register("sw.js").catch(function () {}); } catch (e) {}
+        }
+
+        /* ---------- v34 : compteur de visites GoatCounter (actif seulement si GC_CODE est renseigne) ---------- */
+        if (GC_CODE && typeof document !== "undefined" && document.createElement) {
+          try {
+            var gcS = document.createElement("script");
+            gcS.async = true;
+            gcS.setAttribute("data-goatcounter", "https://" + GC_CODE + ".goatcounter.com/count");
+            gcS.src = "https://gc.zgo.at/count.js";
+            document.head.appendChild(gcS);
+          } catch (e) {}
         }
 
         /* ---------- go ---------- */
