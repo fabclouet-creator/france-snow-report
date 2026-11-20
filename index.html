@@ -781,9 +781,10 @@
 
         var DATA = {};      /* per resort metrics */
         var mode = "loading"; /* loading | live | partial | cached | demo */
-        var APP_VER = "v32"; /* affiche dans la ligne d'infos pour verifier d'un coup d'oeil la version */
+        var APP_VER = "v33"; /* affiche dans la ligne d'infos pour verifier d'un coup d'oeil la version */
         var lastUpdate = null;
         var lastErr = "";
+        var last429 = 0;   /* v33 : date du dernier HTTP 429 (limite d'appels par adresse IP) */
         var userPos = null;   /* from Near me button */
         var sortNear = false;
         var cmpMode = false;  /* compare selection mode */
@@ -1782,7 +1783,14 @@
           var abortTimer = ctrl ? setTimeout(function () { try { ctrl.abort(); } catch (e) {} }, 30000) : null;
           var p = ctrl ? fetch(url, { signal: ctrl.signal }) : fetch(url);
           p = p.then(function (res) {
-            if (!res.ok) { throw new Error("HTTP " + res.status); }
+            if (!res.ok) {
+              /* v33 : le service explique son refus dans la reponse, on le recupere pour l'afficher */
+              return res.text().then(function (tx) {
+                var why = "";
+                try { var j = JSON.parse(tx); if (j && j.reason) { why = " · " + j.reason; } } catch (e) {}
+                throw new Error("HTTP " + res.status + why);
+              });
+            }
             return res.json();
           }).then(function (data) {
             var arr = Array.isArray(data) ? data : [data];
@@ -1847,6 +1855,8 @@
         function fetchChunkRetry(list, attempts) {
           return fetchChunk(list).catch(function (e) {
             lastErr = (e && e.message) ? e.message : String(e);
+            /* v33 : 429 = limite d'appels de l'adresse IP, retenter dans la seconde ne sert a rien */
+            if (lastErr.indexOf("429") >= 0) { last429 = Date.now(); return false; }
             if (attempts > 0) {
               return new Promise(function (res) {
                 setTimeout(function () { res(fetchChunkRetry(list, attempts - 1)); },
@@ -3234,7 +3244,11 @@
             /* v30: en live, rafraichit au bout de 15 min; sinon (demo/partial/cached), retente tout seul toutes les 5 min */
             var grace = (mode === "live") ? 15 * 60000 : 5 * 60000;
             var last = lastUpdate ? lastUpdate.getTime() : 0;
-            if (Date.now() - last > grace) { loadLive(); }
+            if (Date.now() - last > grace) {
+              /* v33 : apres un 429, on laisse respirer 30 min (le quota IP se recharge tout seul) */
+              if (last429 && Date.now() - last429 < 30 * 60000) { return; }
+              loadLive();
+            }
           }, 5 * 60000);
         }
 
