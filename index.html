@@ -241,6 +241,7 @@
           <button id="cmp-toggle"></button>
           <button id="cams-all"></button>
           <button id="don-btn"></button>
+          <button id="install-btn" class="hide"></button>
           <button id="refresh"></button>
           <button id="lang"></button>
         </div>
@@ -494,6 +495,8 @@
             alertOn: "🔔✅ Alerte poudreuse activée",
             alertOff: "🔔 M'alerter si ≥ 20 cm prévus",
             alertBanner: "Alerte poudreuse",
+            install: "📱 Installer l'app",
+            installOk: "✅ Application installée",
             zoomIn: "Zoomer",
             zoomOut: "Dézoomer",
             zoomReset: "Vue initiale",
@@ -570,6 +573,8 @@
             alertOn: "🔔✅ Powder alert on",
             alertOff: "🔔 Alert me when ≥ 20 cm forecast",
             alertBanner: "Powder alert",
+            install: "📱 Install app",
+            installOk: "✅ App installed",
             zoomIn: "Zoom in",
             zoomOut: "Zoom out",
             zoomReset: "Reset view",
@@ -1303,6 +1308,26 @@
           });
         }
 
+        /* ---------- v20 : bouton installer l'application ---------- */
+        var installEvt = null;
+        function showInstallBtn() {
+          var b = document.getElementById("install-btn");
+          if (b) { b.classList.remove("hide"); }
+        }
+        onId("install-btn", "click", function () {
+          if (installEvt && installEvt.prompt) {
+            installEvt.prompt();
+            try {
+              installEvt.userChoice.then(function (ch) {
+                if (ch && ch.outcome === "accepted") {
+                  setTxt("install-btn", t("installOk"));
+                  setTimeout(function () { var b = document.getElementById("install-btn"); if (b) { b.classList.add("hide"); } }, 2500);
+                }
+              }).catch(function () {});
+            } catch (e) {}
+          }
+        });
+
         /* ---------- v19 : don + alertes poudreuse ---------- */
         function refreshAlertBtn() {
           var b = document.getElementById("dt-alert");
@@ -1899,6 +1924,9 @@
           setTxt("gallery-title", "🖼 " + t("allcams"));
           setTxt("cmp-open", t("cmpOpen"));
           setTxt("dt-share", t("share"));
+          setTxt("install-btn", t("install"));
+          var ib = document.getElementById("install-btn");
+          if (ib) { ib.classList.toggle("hide", !installEvt); }
           var db = document.getElementById("don-btn");
           if (db) {
             if (DON_URL) { db.classList.remove("hide"); db.textContent = t("don"); }
@@ -2302,6 +2330,19 @@
           }, 5 * 60000);
         }
 
+        /* ---------- v20 : evenements d'installation navigateur ---------- */
+        if (typeof window !== "undefined" && window.addEventListener) {
+          window.addEventListener("beforeinstallprompt", function (e) {
+            try { e.preventDefault(); } catch (er) {}
+            installEvt = e;
+            showInstallBtn();
+          });
+          window.addEventListener("appinstalled", function () {
+            var b = document.getElementById("install-btn");
+            if (b) { b.classList.add("hide"); }
+          });
+        }
+
         /* ---------- v19 : installable comme app (service worker) ---------- */
         if (typeof navigator !== "undefined" && navigator.serviceWorker &&
             typeof location !== "undefined" && location.protocol &&
@@ -2315,6 +2356,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="lcnXIkhnbWT3++6EHTmvLw==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="sJAOxYuWrmAnoO9Id10i9A==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
