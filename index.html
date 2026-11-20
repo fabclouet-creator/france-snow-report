@@ -118,6 +118,8 @@
       .mtc-bg { fill: rgba(255,255,255,.88); stroke: #9fc4e8; stroke-width: .8; }
       .mt-leader { stroke: rgba(27,79,143,.45); }
       .dt-rank { text-align: center; font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+      .dt-open { text-align: center; font-size: 12.5px; color: var(--accent); margin: -4px 0 10px; }
+      .dt-actions { margin-top: 10px; }
       .dt-body .card { width: 100%; max-width: 350px; margin: 0 auto; }
       button:disabled { opacity: .5; cursor: default; }
       .footer { max-width: 1100px; margin: 22px auto 0; font-size: 12px; color: var(--muted); line-height: 1.5; }
@@ -292,6 +294,9 @@
           <button class="close-x" id="detail-close" type="button">✕</button>
           <h2 id="detail-title"></h2>
           <div class="dt-body" id="dt-body"></div>
+          <div class="modal-actions dt-actions">
+            <button type="button" id="dt-share">🔗</button>
+          </div>
         </div>
       </div>
       <div class="modal-back" id="cmp-back">
@@ -473,6 +478,9 @@
             cmpTitle: "⚖️ Comparaison des stations",
             detail: "Détails",
             rankDepth: "N°{x} sur {y} pour la neige au sommet",
+            opening: "Ouverture prévue",
+            share: "🔗 Partager",
+            shareOk: "✅ Lien copié !",
             zoomIn: "Zoomer",
             zoomOut: "Dézoomer",
             zoomReset: "Vue initiale",
@@ -542,6 +550,9 @@
             cmpTitle: "⚖️ Resort comparison",
             detail: "Details",
             rankDepth: "Ranked #{x} of {y} by summit snow",
+            opening: "Season opening",
+            share: "🔗 Share",
+            shareOk: "✅ Link copied!",
             zoomIn: "Zoom in",
             zoomOut: "Zoom out",
             zoomReset: "Reset view",
@@ -950,8 +961,146 @@
           ],
           "Le Mourtis": [
             "https://cdn.skylinewebcams.com/live5259.jpg"
+          ],
+          "Les Houches": [
+            "https://panodata.panomax.com/cams/720/preview_og.jpg"
+          ],
+          "Saint-François-Longchamp": [
+            "https://www.trinum.com/ibox/ftpcam/st_francois_village.jpg"
+          ],
+          "Saint-Lary-Soulan": [
+            "https://s1.vision-environnement.com/live/modules/timelapse/capture/saintlary.jpg"
+          ],
+          "Superbagnères (Luchon)": [
+            "https://www.vision-environnement.com/live/image/webcam/luchon.JPG"
+          ],
+          "La Toussuire": [
+            "skaping://toussuire/pierre-du-turc",
+            "skaping://toussuire/les-lutins",
+            "skaping://les-sybelles/ouillon"
+          ],
+          "Peyragudes": [
+            "skaping://peyragudes/cap-de-pales",
+            "skaping://peyragudes/belvedere",
+            "skaping://peyragudes/les-agudes"
+          ],
+          "Cauterets": [
+            "skaping://cauterets/pontdespagne"
+          ],
+          "Luz Ardiden": [
+            "skaping://luz-ardiden/aulian",
+            "skaping://luz-ardiden/sommet-aulian"
           ]
         };
+
+        /* ---------- v18: webcams skaping (URL horaires recomputees) ---------- */
+        var SKAP_BASE = "https://skaping.s3.gra.io.cloud.ovh.net/";
+        function isSkap(u) { return u.indexOf("skaping://") === 0; }
+        function skapCandidates(u) {
+          var p = u.slice("skaping://".length).split("/");
+          var st = p[0] || "", cam = p[1] || "";
+          var out = [];
+          for (var k = 0; k < 6; k++) {
+            var d = new Date(Date.now() - k * 3600000);
+            var y = "", mo = "", da = "", hh = "";
+            try {
+              var f = new Intl.DateTimeFormat("fr-CA", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" });
+              f.formatToParts(d).forEach(function (q) {
+                if (q.type === "year") { y = q.value; }
+                if (q.type === "month") { mo = q.value; }
+                if (q.type === "day") { da = q.value; }
+                if (q.type === "hour") { hh = q.value; }
+              });
+            } catch (e) { return out; }
+            if (hh === "24") { hh = "23"; }
+            out.push(SKAP_BASE + st + "/" + cam + "/" + y + "/" + mo + "/" + da + "/hd/" + hh + "-00.jpg");
+          }
+          return out;
+        }
+        var PAN_HOSTS = ["images.bergfex.at", "panodata.panomax.com", "vision-environnement.com", "skaping.s3.gra.io.cloud.ovh.net"];
+        function isPan(u) {
+          for (var i = 0; i < PAN_HOSTS.length; i++) { if (u.indexOf(PAN_HOSTS[i]) >= 0) { return true; } }
+          return false;
+        }
+
+        /* ---------- v18: dates d'ouverture annoncees (saison 2026-27) ---------- */
+        var OPENS = {
+          "Alpe d'Huez": "6|11",
+          "Artouste": "19|11",
+          "Ascou-Pailhères": "19|11",
+          "Auron": "5|11",
+          "Avoriaz": "11|11",
+          "Ax 3 Domaines": "5|11",
+          "Cauterets": "6|11",
+          "Chamonix Mont-Blanc": "28|10",
+          "Chamrousse": "5|11",
+          "Châtel": "4|11",
+          "Courchevel": "4|11",
+          "Flaine (Grand Massif)": "5|11",
+          "Font-Romeu / Pyrénées 2000": "5|11",
+          "Gourette": "5|11",
+          "Isola 2000": "5|11",
+          "La Bresse - Hohneck": "19|11",
+          "La Clusaz": "29|10",
+          "La Mongie - Grand Tourmalet": "5|11",
+          "La Plagne": "13|11",
+          "La Rosière": "12|11",
+          "La Toussuire": "12|11",
+          "Le Grand-Bornand": "5|11",
+          "Le Mont-Dore": "19|11",
+          "Le Mourtis": "18|11",
+          "Le Ventron": "19|11",
+          "Les Angles": "27|10",
+          "Les Arcs": "12|11",
+          "Les Contamines": "13|11",
+          "Les Deux Alpes": "30|10",
+          "Les Gets": "12|11",
+          "Les Houches": "19|11",
+          "Les Menuires": "5|11",
+          "Les Orres": "5|11",
+          "Luz Ardiden": "25|10",
+          "Megève (Evasion Mont-Blanc)": "12|11",
+          "Montgenèvre": "28|10",
+          "Monts-Jura": "19|11",
+          "Méribel": "5|11",
+          "Métabief": "5|11",
+          "Orcières Merlette": "12|11",
+          "Peyragudes": "4|11",
+          "Piau-Engaly": "4|11",
+          "Porté-Puymorens": "5|11",
+          "Pra-Loup": "12|11",
+          "Pralognan-la-Vanoise": "19|11",
+          "Puy-Saint-Vincent": "5|11",
+          "Risoul": "5|11",
+          "Saint-François-Longchamp": "12|11",
+          "Saint-Lary-Soulan": "5|11",
+          "Saint-Sorlin-d'Arves": "12|11",
+          "Sainte-Foy Tarentaise": "12|11",
+          "Samoëns (Grand Massif)": "12|11",
+          "Serre Chevalier": "5|11",
+          "Super-Besse": "19|11",
+          "SuperDévoluy": "12|11",
+          "Tignes": "21|10",
+          "Val Cenis": "12|11",
+          "Val Thorens": "21|10",
+          "Val d'Allos - La Foux": "12|11",
+          "Val d'Isère": "28|10",
+          "Valberg": "19|11",
+          "Valmorel": "18|11",
+          "Vars": "5|11",
+          "Villard-de-Lans": "19|11",
+        };
+        var MOIS_FR = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+        var MOIS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        function openTxt(n) {
+          var o = OPENS[n];
+          if (!o) { return ""; }
+          var p = o.split("|");
+          var d = parseInt(p[0], 10);
+          var mo = parseInt(p[1], 10);
+          if (!(d >= 1 && d <= 31 && mo >= 0 && mo < 12)) { return ""; }
+          return t("opening") + " : " + (LANG === "fr" ? d + " " + MOIS_FR[mo] : MOIS_EN[mo] + " " + d);
+        }
 
         /* ---------- live fetch (Open-Meteo, free, no key) ---------- */
         function chunk(arr, n) {
@@ -1226,11 +1375,13 @@
             if (urls.length) {
               html += '<p class="cam-note">' + escapeHtml(t("camNote")) + "</p>";
               for (i = 0; i < urls.length; i++) {
-                var pu = escapeHtml(bust ? bustUrl(urls[i]) : urls[i]);
-                if (urls[i].indexOf("images.bergfex.at") >= 0) {
-                  html += '<div class="cam-scroll"><img class="cam-img" src="' + pu + '" alt="' + escapeHtml(name) + '" /></div>';
+                var su = isSkap(urls[i]);
+                var sk = su ? ' data-skap="' + escapeHtml(urls[i]) + '"' : "";
+                var pu = su ? escapeHtml(skapCandidates(urls[i])[0]) : escapeHtml(bust ? bustUrl(urls[i]) : urls[i]);
+                if (isPan(urls[i]) || su) {
+                  html += '<div class="cam-scroll"><img class="cam-img"' + sk + ' src="' + pu + '" alt="' + escapeHtml(name) + '" /></div>';
                 } else {
-                  html += '<img class="cam-img" src="' + pu + '" alt="' + escapeHtml(name) + '" />';
+                  html += '<img class="cam-img"' + sk + ' src="' + pu + '" alt="' + escapeHtml(name) + '" />';
                 }
               }
             } else {
@@ -1241,7 +1392,14 @@
               var imgs = body.querySelectorAll("img.cam-img");
               for (i = 0; i < imgs.length; i++) {
                 imgs[i].addEventListener("error", function () {
-                  if (this.classList) { this.classList.add("hide"); }
+                  if (!this.classList) { return; }
+                  var spec = this.getAttribute && this.getAttribute("data-skap");
+                  if (spec) {
+                    this._si = (this._si || 0) + 1;
+                    var cs = skapCandidates(spec);
+                    if (this._si < cs.length) { this.src = cs[this._si]; return; }
+                  }
+                  this.classList.add("hide");
                   var w = this.parentNode;
                   if (w && w.classList && w.classList.contains && w.classList.contains("cam-scroll")) { w.classList.add("hide"); }
                 });
@@ -1302,7 +1460,8 @@
             if (!urls.length) { return; }
             h += '<div class="glm-cell"><h3>' + escapeHtml(n) + "</h3>";
             urls.forEach(function (u) {
-              h += '<img class="cam-img" src="' + escapeHtml(u) + '" alt="' + escapeHtml(n) + '" loading="lazy" />';
+              var gu = isSkap(u) ? skapCandidates(u)[0] : u;
+              h += '<img class="cam-img" src="' + escapeHtml(gu) + '" alt="' + escapeHtml(n) + '" loading="lazy" />';
             });
             h += "</div>";
           });
@@ -1434,6 +1593,7 @@
           h += "</svg>";
           return h;
         }
+        var dtName = "";
         function openDetail(name) {
           var r = resortByName(name);
           var body = document.getElementById("dt-body");
@@ -1449,10 +1609,13 @@
             }
           });
           setTxt("detail-title", r.n);
+          dtName = r.n;
           var rankTxt = (m && typeof m.depth === "number")
             ? t("rankDepth").replace("{x}", String(rank + 1)).replace("{y}", String(cnt))
             : "";
+          var openTxtV = openTxt(r.n);
           body.innerHTML = (rankTxt ? '<p class="dt-rank">' + escapeHtml(rankTxt) + "</p>" : "") +
+            (openTxtV ? '<p class="dt-open">⛷️ ' + escapeHtml(openTxtV) + "</p>" : "") +
             mountainSvg(r, m) + cardHtml(r, m);
           back.classList.add("open");
         }
@@ -1582,9 +1745,15 @@
             setCamState(name, okFlag ? "s-ok" : "s-ko");
           }
           var timer = setTimeout(function () { finish(false); }, 10000);
+          var cands = isSkap(urls[0]) ? skapCandidates(urls[0]) : [camProbeUrl(urls[0])];
+          var si = 0;
           img.onload = function () { clearTimeout(timer); finish(true); };
-          img.onerror = function () { clearTimeout(timer); finish(false); };
-          img.src = camProbeUrl(urls[0]);
+          img.onerror = function () {
+            si += 1;
+            if (si < cands.length) { img.src = cands[si]; return; }
+            clearTimeout(timer); finish(false);
+          };
+          img.src = cands[0];
         }
         function checkCams() {
           var g = document.getElementById("grid");
@@ -1676,6 +1845,7 @@
           setTxt("cams-all", "🖼 " + t("allcams"));
           setTxt("gallery-title", "🖼 " + t("allcams"));
           setTxt("cmp-open", t("cmpOpen"));
+          setTxt("dt-share", t("share"));
           setTxt("t-favlegend", t("favLegend"));
           setTitle("zoom-in", t("zoomIn"));
           setTitle("zoom-out", t("zoomOut"));
@@ -1986,6 +2156,22 @@
         }
         onId("gallery-close", "click", closeGallery);
         onId("detail-close", "click", closeDetail);
+        onId("dt-share", "click", function () {
+          var label = dtName || t("title");
+          var rr = dtName ? resortByName(dtName) : null;
+          var mm = rr ? metric(rr) : null;
+          var txt = label + (mm && typeof mm.depth === "number" ? " · " + mm.depth + " cm" : "") + " · France Snow Report ❄️";
+          if (typeof navigator !== "undefined" && navigator.share) {
+            navigator.share({ title: label, text: txt, url: location.href }).catch(function () {});
+            return;
+          }
+          if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(txt + " " + location.href).then(function () {
+              setTxt("dt-share", t("shareOk"));
+              setTimeout(function () { setTxt("dt-share", t("share")); }, 2500);
+            }, function () {});
+          }
+        });
         onId("cmp-close", "click", closeCompare);
         onId("cmp-open", "click", openCompare);
         onId("cams-all", "click", openGallery);
@@ -2032,12 +2218,20 @@
           if (!document.hidden && mode !== "live") { loadLive(); }
         });
 
+        /* ---------- v18: rafraichissement auto des donnees (15 min) ---------- */
+        if (typeof setInterval === "function") {
+          setInterval(function () {
+            if (document.hidden || mode !== "live" || !lastUpdate) { return; }
+            if (Date.now() - lastUpdate.getTime() > 15 * 60000) { loadLive(); }
+          }, 5 * 60000);
+        }
+
         /* ---------- go ---------- */
         applyViewBox();
         render();
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="jXjuWB+v7SCqC924c+o1uw==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="cGZL6GlMkjyJZE/dCT5lSQ==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
