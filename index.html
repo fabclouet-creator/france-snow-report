@@ -74,14 +74,16 @@
         z-index: 999;
       }
       #don-toast.show { opacity: 1; visibility: visible; }
-      #site-logo { display: block; height: 46px; border-radius: 11px; margin: 0 auto 8px; box-shadow: 0 2px 10px rgba(34, 49, 78, 0.25); }
+      .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+      .brand-txt { min-width: 0; }
+      #site-logo { display: block; height: 84px; width: auto; flex: none; border-radius: 14px; box-shadow: 0 2px 10px rgba(34, 49, 78, 0.25); }
+      .brand .subtitle { margin-bottom: 2px; }
       #radar-map { position: relative; width: 100%; aspect-ratio: 700 / 660; max-height: 60vh; margin: 4px 0 10px; border-radius: 10px; background: #dbe7f5; overflow: hidden; touch-action: none; cursor: grab; }
       #radar-map svg { position: absolute; pointer-events: none; }
       .radar-world { position: absolute; top: 0; left: 0; }
       .radar-hill { position: absolute; }
       #radar-map .radar-tile { position: absolute; opacity: 0.85; }
       .radar-dot { fill: #12385f; stroke: #fff; stroke-width: 0.4; pointer-events: all; cursor: pointer; }
-      .radar-land { fill: rgba(255, 255, 255, 0.42); stroke: #8ea3bf; stroke-width: 0.25; }
       .radar-ctl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 10px; font-size: 13.5px; }
       .radar-ctl button { font: inherit; font-size: 14px; width: 34px; height: 30px; padding: 0; border-radius: 8px; background: #f2f7ff; border: 1px solid var(--line); color: var(--accent); cursor: pointer; }
       #radar-time { font-weight: 600; min-width: 62px; }
@@ -241,7 +243,6 @@
         .gauge { background: #22314e; }
         #radar-map { background: #0e1c33; }
         .radar-ctl button { background: #16233a; border-color: var(--line); }
-        .radar-land { fill: rgba(14, 28, 51, 0.55); stroke: #3a5378; }
         .radar-dot { fill: #a9cdf5; stroke: #061a35; }
         #radar-flag { background: #123047; color: #a9d8ff; border-color: #2b6f9e; }
         #radar-err { background: rgba(12, 21, 36, 0.88); }
@@ -270,15 +271,19 @@
         .mt-leader { stroke: rgba(163,205,245,.55); }
         .dt-btn { background: rgba(122, 184, 238, .12); border-color: #3d5f8a; color: #c3dbf6; }
       }
-      @media (max-width: 560px) { h1 { font-size: 21px; } #site-logo { height: 36px; } .card .stats { flex-direction: column; } }
+      @media (max-width: 560px) { h1 { font-size: 21px; } #site-logo { height: 54px; } .brand { gap: 10px; margin-bottom: 8px; } .card .stats { flex-direction: column; } }
     </style>
   </head>
   <body>
     <header>
       <div class="wrap">
-        <img id="site-logo" src="logo.jpg" alt="" onerror="this.style.display='none'" />
-        <h1 id="t-title"></h1>
-        <p class="subtitle" id="t-sub"></p>
+        <div class="brand">
+          <img id="site-logo" src="logo.jpg" alt="" onerror="this.style.display='none'" />
+          <div class="brand-txt">
+            <h1 id="t-title"></h1>
+            <p class="subtitle" id="t-sub"></p>
+          </div>
+        </div>
         <div class="toolbar">
           <input type="search" id="search" />
           <select id="region">
@@ -2463,7 +2468,7 @@
         var RADAR_API = "https://api.rainviewer.com/public/weather-maps.json";
         var RADAR_TTL = 10 * 60 * 1000;
         var HILL_URL = "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/";
-        var RADAR_ZMIN = 6, RADAR_ZMAX = 9;
+        var RADAR_ZMIN = 6, RADAR_ZMAX = 8;
         var radarData = null;
         var radarTiles = null;
         var radarErrEl = null;
@@ -2481,13 +2486,6 @@
         function wT(z) { return 256 * Math.pow(2, z); }
         function wPx(lo, z) { return (lo + 180) / 360 * wT(z); }
         function wPy(la, z) { return (0.5 - mercN(la) / (2 * Math.PI)) * wT(z); }
-        function polyWorld(pts, ox, oy, z) {
-          var d = "";
-          for (var i = 0; i < pts.length; i++) {
-            d += (i === 0 ? "M" : " L") + (wPx(pts[i][0], z) - ox).toFixed(1) + "," + (wPy(pts[i][1], z) - oy).toFixed(1);
-          }
-          return d + " Z";
-        }
         function radarSize() {
           var mEl = document.getElementById("radar-map");
           var w = (mEl && mEl.clientWidth) || 700;
@@ -2535,9 +2533,7 @@
               radarTiles.push({ rain: rain, tx: tx, ty: ty });
             }
           }
-          var svg = '<svg viewBox="0 0 ' + sz.w + " " + sz.h + '" style="left:0;top:0;width:' + sz.w + "px;height:" + sz.h + 'px;">'
-            + '<path class="radar-land" d="' + polyWorld(FRANCE, ox, oy, z) + '"></path>'
-            + '<path class="radar-land" d="' + polyWorld(CORSICA, ox, oy, z) + '"></path>';
+          var svg = '<svg viewBox="0 0 ' + sz.w + " " + sz.h + '" style="left:0;top:0;width:' + sz.w + "px;height:" + sz.h + 'px;">';
           RESORTS.forEach(function (r) {
             svg += '<circle class="radar-dot" cx="' + (wPx(r.lo, z) - ox).toFixed(1)
               + '" cy="' + (wPy(r.la, z) - oy).toFixed(1)
@@ -2794,6 +2790,6 @@
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="SVgv0HuFW+K+krnkChuBJg==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="412jvMwAO8Q0r2oLuUA7Cg==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
