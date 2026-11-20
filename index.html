@@ -2896,8 +2896,11 @@
         /* ---------- v18: rafraichissement auto des donnees (15 min) ---------- */
         if (typeof setInterval === "function") {
           setInterval(function () {
-            if (document.hidden || mode !== "live" || !lastUpdate) { return; }
-            if (Date.now() - lastUpdate.getTime() > 15 * 60000) { loadLive(); }
+            if (document.hidden || mode === "loading") { return; }
+            /* v30: en live, rafraichit au bout de 15 min; sinon (demo/partial/cached), retente tout seul toutes les 5 min */
+            var grace = (mode === "live") ? 15 * 60000 : 5 * 60000;
+            var last = lastUpdate ? lastUpdate.getTime() : 0;
+            if (Date.now() - last > grace) { loadLive(); }
           }, 5 * 60000);
         }
 
