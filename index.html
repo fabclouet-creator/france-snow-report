@@ -645,7 +645,8 @@
             demoNote: "⚠️ Données en direct indisponibles : valeurs de démonstration affichées. Si le fichier a été ouvert depuis le disque (l'adresse commence par file://), votre navigateur bloque probablement les requêtes météo. Hébergez la page en ligne (GitHub Pages, Netlify…) ou servez-la en local : elle fonctionnera alors partout, sans rien installer d'autre.",
             errNote: "⚠️ Impossible de récupérer les données de certaines stations. Cliquez sur « Actualiser » pour réessayer.",
             dataPartial: "certaines stations indisponibles",
-            cachedData: "données enregistrées dans le navigateur",
+            cachedData: "données enregistrées dans le navigateur · reconnexion automatique en cours",
+            cachedErr: "⚠️ Le service météo (open-meteo.com) est injoignable depuis votre appareil. Le site réessaie tout seul toutes les 5 minutes. Cliquez sur Actualiser pour réessayer immédiatement.",
             slowNote: "⏳ Le chargement des données est anormalement long : votre réseau ou votre navigateur bloque probablement l'accès à open-meteo.com. Testez la page sur votre téléphone en 4G/5G pour vérifier, ou essayez après avoir désactivé vos extensions de navigateur.",
             footer: 'Données neige : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (modèles météo, CC BY 4.0). La neige est estimée à trois altitudes par station (village / mi-pente / sommet). Les valeurs sont des estimations indicatives : vérifiez toujours le bulletin officiel de la station avant de partir.',
             statUnit: "stations",
@@ -743,7 +744,8 @@
             demoNote: "⚠️ Live snow data could not be loaded, so demo values are shown. If you opened this file directly from disk (the address starts with file://), your browser is probably blocking weather requests. Host the page online (GitHub Pages, Netlify…) or serve it locally: it will then work everywhere, with nothing else to install.",
             errNote: "⚠️ Could not fetch data for some resorts. Click Refresh to retry.",
             dataPartial: "some resorts unavailable",
-            cachedData: "data saved in your browser",
+            cachedData: "data saved in browser · reconnecting automatically",
+            cachedErr: "⚠️ The weather service (open-meteo.com) cannot be reached from your device. The site retries automatically every 5 minutes. Click Refresh to retry immediately.",
             slowNote: "⏳ Loading is taking unusually long: your network or browser is probably blocking access to open-meteo.com. Try the page on your phone using 4G/5G to check, or retry after disabling your browser extensions.",
             footer: 'Snow data: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (weather models, CC BY 4.0). Snow is estimated at three altitudes per resort (village / mid-slope / summit). Values are indicative estimates: always check the resort official snow report before you go.',
             statUnit: "resorts",
@@ -778,7 +780,8 @@
         } catch (e) { AL = {}; }
 
         var DATA = {};      /* per resort metrics */
-        var mode = "loading"; /* loading | live | partial | demo */
+        var mode = "loading"; /* loading | live | partial | cached | demo */
+        var APP_VER = "v32"; /* affiche dans la ligne d'infos pour verifier d'un coup d'oeil la version */
         var lastUpdate = null;
         var lastErr = "";
         var userPos = null;   /* from Near me button */
@@ -2544,10 +2547,10 @@
             }
           }
           if (mode === "demo") {
-            elMeta.textContent = RESORTS.length + " " + t("statUnit") + " · demo";
+            elMeta.textContent = RESORTS.length + " " + t("statUnit") + " · demo · " + APP_VER;
           } else {
             elMeta.textContent = RESORTS.length + " " + t("statUnit") + " · " + t("updated") + " " + dateStr +
-              (mode === "partial" ? " · ⚠️ " + t("dataPartial") : (mode === "cached" ? " · ⚠️ " + t("cachedData") : ""));
+              (mode === "partial" ? " · ⚠️ " + t("dataPartial") : (mode === "cached" ? " · ⚠️ " + t("cachedData") : "")) + " · " + APP_VER;
           }
         }
 
@@ -2637,7 +2640,7 @@
             }
           }
           notice("demo-note", mode === "demo", t("demoNote") + (lastErr ? " (" + lastErr + ")" : ""));
-          notice("err-note", false, "");
+          notice("err-note", mode === "cached", t("cachedErr") + (lastErr ? " (" + lastErr + ")" : ""));
           setView(view);
           renderMap();
 
