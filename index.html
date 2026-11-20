@@ -3,6 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a3060" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icon-512.png" />
     <title>France Snow Report · Bulletin Neige France</title>
     <style>
       :root {
@@ -44,6 +47,8 @@
       .notice.show { display: block; }
       .notice.demo { background: #fff6e0; border: 1px solid #eccb7a; color: #6b4d00; }
       .notice.error { background: #fdeaea; border: 1px solid #e5a1a1; color: #7d1f1f; }
+      .notice.alert { background: #eaf6ff; border: 1px solid #8ecbff; color: #0a4d7a; }
+      .hide { display: none !important; }
       .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
       .card {
         background: var(--card); border: 1px solid var(--line); border-radius: 14px;
@@ -183,6 +188,7 @@
         button.active { background: var(--accent); color: #061a35; border-color: var(--accent); }
         .notice.demo { background: #473a14; border-color: #8a6d1f; color: #ffd76a; }
         .notice.error { background: #45201f; border-color: #a05b5b; color: #ffa5a5; }
+        .notice.alert { background: #123047; border-color: #2b6f9e; color: #a9d8ff; }
         .gauge { background: #22314e; }
         .alt-row, .stat { background: #1d2c47; }
         .alt-row b { color: #a9cdf5; }
@@ -234,6 +240,7 @@
           <button id="nearme"></button>
           <button id="cmp-toggle"></button>
           <button id="cams-all"></button>
+          <button id="don-btn"></button>
           <button id="refresh"></button>
           <button id="lang"></button>
         </div>
@@ -246,6 +253,7 @@
       <div class="notice demo" id="demo-note"></div>
       <div class="notice error" id="err-note"></div>
       <div class="notice demo" id="slow-note"></div>
+      <div class="notice alert" id="alert-note"></div>
       <div id="top10" class="top-wrap"></div>
       <div class="grid" id="grid"></div>
       <div id="map-view" class="view-hidden">
@@ -296,6 +304,7 @@
           <div class="dt-body" id="dt-body"></div>
           <div class="modal-actions dt-actions">
             <button type="button" id="dt-share">🔗</button>
+            <button type="button" id="dt-alert"></button>
           </div>
         </div>
       </div>
@@ -481,6 +490,10 @@
             opening: "Ouverture prévue",
             share: "🔗 Partager",
             shareOk: "✅ Lien copié !",
+            don: "☕ Offrir un café",
+            alertOn: "🔔✅ Alerte poudreuse activée",
+            alertOff: "🔔 M'alerter si ≥ 20 cm prévus",
+            alertBanner: "Alerte poudreuse",
             zoomIn: "Zoomer",
             zoomOut: "Dézoomer",
             zoomReset: "Vue initiale",
@@ -553,6 +566,10 @@
             opening: "Season opening",
             share: "🔗 Share",
             shareOk: "✅ Link copied!",
+            don: "☕ Buy me a coffee",
+            alertOn: "🔔✅ Powder alert on",
+            alertOff: "🔔 Alert me when ≥ 20 cm forecast",
+            alertBanner: "Powder alert",
             zoomIn: "Zoom in",
             zoomOut: "Zoom out",
             zoomReset: "Reset view",
@@ -584,6 +601,13 @@
         try {
           JSON.parse(favRaw).forEach(function (x) { favs[x] = true; });
         } catch (e) { favs = {}; }
+
+        var DON_URL = "";   /* Lien de don (PayPal.me, Ko-fi...). Vide = bouton masque. */
+        var ALERT_CM = 20;  /* seuil de l'alerte poudreuse, en cm prevus */
+        var AL = {};        /* stations avec alerte active { nom: true } */
+        try {
+          JSON.parse(storeGet("fsr-alerts", "[]")).forEach(function (x) { AL[x] = true; });
+        } catch (e) { AL = {}; }
 
         var DATA = {};      /* per resort metrics */
         var mode = "loading"; /* loading | live | partial | demo */
@@ -1275,7 +1299,35 @@
             else { mode = "demo"; }
             if (mode === "live" || mode === "partial") { lastUpdate = new Date(); saveCache(); }
             render();
+            checkAlerts();
           });
+        }
+
+        /* ---------- v19 : don + alertes poudreuse ---------- */
+        function refreshAlertBtn() {
+          var b = document.getElementById("dt-alert");
+          if (b) { b.textContent = (dtName && AL[dtName]) ? t("alertOn") : t("alertOff"); }
+        }
+        function checkAlerts() {
+          var nb = document.getElementById("alert-note");
+          if (!nb) { return; }
+          var ok = (mode === "live" || mode === "partial" || mode === "cached");
+          var names = ok ? Object.keys(AL).filter(function (n) {
+            var r = resortByName(n);
+            var m = r ? metric(r) : null;
+            return !!(m && typeof m.forecast === "number" && m.forecast >= ALERT_CM);
+          }) : [];
+          if (!names.length) { nb.classList.remove("show"); return; }
+          var list = names.map(function (n) {
+            var r = resortByName(n);
+            var m = r ? metric(r) : null;
+            return n + " (" + ((m && typeof m.forecast === "number") ? m.forecast : "?") + " cm)";
+          }).join(" · ");
+          nb.textContent = "🚨 " + t("alertBanner") + " : " + list;
+          nb.classList.add("show");
+          if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+            try { new Notification("France Snow Report 🚨", { body: "🚨 " + t("alertBanner") + " : " + list }); } catch (e) {}
+          }
         }
 
         /* ---------- UI helpers ---------- */
@@ -1610,6 +1662,7 @@
           });
           setTxt("detail-title", r.n);
           dtName = r.n;
+          refreshAlertBtn();
           var rankTxt = (m && typeof m.depth === "number")
             ? t("rankDepth").replace("{x}", String(rank + 1)).replace("{y}", String(cnt))
             : "";
@@ -1846,6 +1899,12 @@
           setTxt("gallery-title", "🖼 " + t("allcams"));
           setTxt("cmp-open", t("cmpOpen"));
           setTxt("dt-share", t("share"));
+          var db = document.getElementById("don-btn");
+          if (db) {
+            if (DON_URL) { db.classList.remove("hide"); db.textContent = t("don"); }
+            else { db.classList.add("hide"); }
+          }
+          refreshAlertBtn();
           setTxt("t-favlegend", t("favLegend"));
           setTitle("zoom-in", t("zoomIn"));
           setTitle("zoom-out", t("zoomOut"));
@@ -2172,6 +2231,23 @@
             }, function () {});
           }
         });
+        onId("dt-alert", "click", function () {
+          if (!dtName) { return; }
+          if (AL[dtName]) { delete AL[dtName]; }
+          else {
+            AL[dtName] = true;
+            if (typeof Notification !== "undefined" && Notification.requestPermission) {
+              try { Notification.requestPermission(); } catch (e) {}
+            }
+          }
+          storeSet("fsr-alerts", JSON.stringify(Object.keys(AL)));
+          refreshAlertBtn();
+        });
+        onId("don-btn", "click", function () {
+          if (DON_URL && typeof window !== "undefined" && window.open) {
+            try { window.open(DON_URL, "_blank"); } catch (e) {}
+          }
+        });
         onId("cmp-close", "click", closeCompare);
         onId("cmp-open", "click", openCompare);
         onId("cams-all", "click", openGallery);
@@ -2226,12 +2302,19 @@
           }, 5 * 60000);
         }
 
+        /* ---------- v19 : installable comme app (service worker) ---------- */
+        if (typeof navigator !== "undefined" && navigator.serviceWorker &&
+            typeof location !== "undefined" && location.protocol &&
+            location.protocol.indexOf("http") === 0) {
+          try { navigator.serviceWorker.register("sw.js").catch(function () {}); } catch (e) {}
+        }
+
         /* ---------- go ---------- */
         applyViewBox();
         render();
         loadLive();
       })();
     </script>
-  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="cGZL6GlMkjyJZE/dCT5lSQ==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
+  <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" nonce="lcnXIkhnbWT3++6EHTmvLw==" data-cf-beacon='{"version":"2024.11.0","token":"36b4216ae2dc4d5488c249161e71fe1e","spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>
